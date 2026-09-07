@@ -182,15 +182,43 @@
 
   /* ---------- floating UI ---------- */
   var pill = null;
+  var syncToggleBtn = null;
+
+  function ensureToggleBtn() {
+    if (syncToggleBtn) return;
+    syncToggleBtn = el("button");
+    syncToggleBtn.textContent = "🔗";
+    syncToggleBtn.title = "Sync / share board";
+    syncToggleBtn.style.cssText = "position:fixed;right:14px;bottom:14px;z-index:99999;width:46px;height:46px;border-radius:50%;border:0;cursor:pointer;background:#ff9800;color:#111;font-size:20px;box-shadow:0 6px 18px rgba(0,0,0,.45)";
+    syncToggleBtn.onclick = expandSync;
+    document.body.appendChild(syncToggleBtn);
+  }
+
+  function collapseSync() {
+    if (pill) pill.style.display = "none";
+    if (syncToggleBtn) syncToggleBtn.style.display = "block";
+  }
+  function expandSync() {
+    if (pill) pill.style.display = "block";
+    if (syncToggleBtn) syncToggleBtn.style.display = "none";
+  }
 
   function ui(statusText, subText, actions) {
+    ensureToggleBtn();
     if (!pill) {
       pill = el("div");
-      pill.style.cssText = "position:fixed;right:14px;bottom:14px;z-index:99999;background:#1a1a2e;color:#eee;border:1px solid #333;border-radius:10px;padding:10px 12px;font-family:IBM Plex Mono,monospace;font-size:12px;box-shadow:0 6px 24px rgba(0,0,0,.45);max-width:300px;line-height:1.5";
+      pill.style.cssText = "position:fixed;right:14px;bottom:14px;z-index:99999;background:#1a1a2e;color:#eee;border:1px solid #333;border-radius:10px;padding:10px 12px;font-family:IBM Plex Mono,monospace;font-size:12px;box-shadow:0 6px 24px rgba(0,0,0,.45);max-width:300px;line-height:1.5;display:none";
       document.body.appendChild(pill);
     }
     pill.innerHTML = "";
-    pill.appendChild(el("div", null, statusText));
+    var header = el("div");
+    header.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:8px";
+    header.appendChild(el("div", null, statusText));
+    var minBtn = el("button", null, "−");
+    minBtn.style.cssText = "background:none;border:0;color:#888;cursor:pointer;font-size:14px;padding:0 4px;line-height:1";
+    minBtn.onclick = collapseSync;
+    header.appendChild(minBtn);
+    pill.appendChild(header);
     if (subText) { var s = el("div", null, subText); s.style.cssText = "color:#888;font-size:11px;word-break:break-all"; pill.appendChild(s); }
     if (actions) {
       var row = el("div");
@@ -221,6 +249,7 @@
       { label: "Copy link", onClick: function () { copy(link); this.textContent = "Copied!"; } },
       { label: "Leave", onClick: function () { leaveRoom(); } }
     ]);
+    if (syncToggleBtn) syncToggleBtn.textContent = "🟢";
   }
 
   function leaveRoom() {
@@ -231,6 +260,7 @@
     stop();
     if (window.__chat) window.__chat.setRoom(null);
     ui("⚪ Sync off", null, [{ label: "Start sync", onClick: begin }]);
+    if (syncToggleBtn) syncToggleBtn.textContent = "🔗";
   }
 
   function begin() {
