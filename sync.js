@@ -215,6 +215,7 @@
       history.replaceState(null, "", window.location.pathname + "?room=" + room + window.location.hash);
     }
     start(room);
+    if (window.__chat) window.__chat.setRoom(room);
     var link = shareUrl(room);
     ui("🟢 Syncing — room " + room, link, [
       { label: "Copy link", onClick: function () { copy(link); this.textContent = "Copied!"; } },
@@ -228,6 +229,7 @@
       history.replaceState(null, "", window.location.pathname + window.location.hash);
     }
     stop();
+    if (window.__chat) window.__chat.setRoom(null);
     ui("⚪ Sync off", null, [{ label: "Start sync", onClick: begin }]);
   }
 
