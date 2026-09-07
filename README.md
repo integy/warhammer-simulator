@@ -2,8 +2,9 @@
 
 Battlefield / deployment / line-of-sight / terrain simulator for Warhammer 40,000.
 
-**Backbone:** forked verbatim from [Warhammer Simulator](https://warhammersimulator.com/battlefield) (React + Vite SPA),
-a free 40k deployment / LOS / terrain tool. All source + data copied locally and made self-contained.
+**Backbone:** forked verbatim from [Rapid Ingress](https://rapidingress.com/battlefield) (React + Vite SPA),
+a free 40k deployment / LOS / terrain tool. All source + data copied locally and made self-contained,
+then rebranded to **Warhammer Simulator**.
 
 ## Run
 
@@ -11,6 +12,17 @@ a free 40k deployment / LOS / terrain tool. All source + data copied locally and
 python3 serve.py 8080     # SPA dev server (fallback to index.html)
 # open http://127.0.0.1:8080/battlefield
 ```
+
+## Deploy
+
+Live: **https://integy.github.io/warhammer-simulator/** (GitHub Pages, `main` branch root).
+
+- Assets use **relative paths**, so the same build works at localhost root and the GH Pages subpath.
+- SPA routing under the subpath is handled by injecting a router `basename` at runtime:
+  `index.html` sets `window.__APP_BASENAME = '/warhammer-simulator'` (or `''` on localhost),
+  and the router reads it (`assets/main-DG1ErbsX.js`).
+- `404.html` = `index.html` + hardcoded `<base href="/warhammer-simulator/">`; GitHub serves
+  it for deep links (e.g. `/battlefield`) so the SPA router can render them.
 
 ## Architecture
 
