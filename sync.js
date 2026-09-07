@@ -4,32 +4,31 @@
  * How it works:
  *  - A "room" is identified by a short id. Two devices that open the same room
  *    (`?room=<id>`) see each other's board live.
- *  - Board state (placed bases, measurements, LOS/radius overlays, layout/deployment
- *    selection) is serialized from the Zustand store (window.__store), debounced and
- *    pushed to /rooms/<id>/board.
- *  - Every device also subscribes to /rooms/<id>/board; on a remote change it applies
- *    the snapshot back into the store via restoreState().
- *  - Echo suppression: the last payload we wrote is ignored when it comes back.
+ *  - Board state is serialized from the Zustand store (window.__store), debounced and
+ *    pushed to /rooms/<id>/board as a single JSON string (Firebase mangles raw arrays
+ *    into keyed objects, so we stringify to keep arrays intact).
+ *  - Every device subscribes to /rooms/<id>/board; on a remote change it parses the
+ *    JSON and applies it back into the store via restoreState().
+ *  - Echo suppression: the last payload string we wrote is ignored when it comes back.
  */
 
 (function () {
   'use strict';
 
   /* ============================================================
-   *  FIREBASE CONFIG — replace with your own project's values
-   *  (Firebase console → Project settings → General → Your apps →
-   *   Web app → Config). You only need apiKey / databaseURL / projectId / appId.
+   *  FIREBASE CONFIG (public web config — safe to embed)
    * ============================================================ */
   var FIREBASE_CONFIG = {
-    apiKey: "REPLACE_ME_API_KEY",
-    databaseURL: "https://REPLACE_ME-default-rtdb.firebaseio.com",
-    projectId: "REPLACE_ME_PROJECT_ID",
-    appId: "REPLACE_ME_APP_ID"
+    apiKey: "AIzaSyB3bIlfEwwr4HX3MpkC1wV_nzFYSBsEoik",
+    authDomain: "warhammer-simulator.firebaseapp.com",
+    databaseURL: "https://warhammer-simulator-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "warhammer-simulator",
+    storageBucket: "warhammer-simulator.firebasestorage.app",
+    messagingSenderId: "909466866109",
+    appId: "1:909466866109:web:c9154a570f9fd79f4482d4"
   };
 
-  var CONFIGURED = FIREBASE_CONFIG.apiKey.indexOf("REPLACE_ME") === -1;
   var ROOM_KEY = "ws_sync_room";
-  var PREFIX = "/warhammer-simulator";
 
   /* ---------- tiny helpers ---------- */
   function roomFromUrl() {
@@ -43,7 +42,8 @@
     return s;
   }
   function shareUrl(room) {
-    return window.location.origin + PREFIX + "/?room=" + room;
+    var base = window.__APP_BASENAME || "";
+    return window.location.origin + base + "/?room=" + room;
   }
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -117,11 +117,13 @@
   var unsub = null;
   var lastWritten = null;
   var timer = null;
+  var joining = false;
 
   function stop() {
     if (unsub) { unsub(); unsub = null; }
     if (ref) { ref.off("value"); ref = null; }
     lastWritten = null;
+    joining = false;
     if (timer) { clearTimeout(timer); timer = null; }
   }
 
@@ -129,14 +131,18 @@
     stop();
     var db = window.firebase.database();
     ref = db.ref("rooms/" + room + "/board");
+    // Suppress local pushes until we know whether this is a join or a create —
+    // otherwise the app's own init (it picks a layout on load) would overwrite
+    // a remote board before we've had a chance to read it.
+    joining = true;
 
     ref.on("value", function (snap) {
       var val = snap.val();
-      if (!val) return;
-      // ignore our own echo
-      var copy = Object.assign({}, val); delete copy.updatedAt;
-      if (lastWritten !== null && JSON.stringify(copy) === lastWritten) return;
-      apply(val);
+      if (!val || typeof val.s !== "string") return;
+      if (lastWritten !== null && val.s === lastWritten) return; // ignore own echo
+      var parsed;
+      try { parsed = JSON.parse(val.s); } catch (e) { return; }
+      apply(parsed);
     });
 
     unsub = store().subscribe(function (state, prevState) {
@@ -149,15 +155,29 @@
       if (timer) clearTimeout(timer);
       timer = setTimeout(push, 350);
     });
+
+    ref.once("value").then(function (snap) {
+      if (!snap.exists()) {
+        // Fresh room: seed it with our current board.
+        joining = false;
+        push();
+        return;
+      }
+      var val = snap.val();
+      if (val && typeof val.s === "string") {
+        try { apply(JSON.parse(val.s)); } catch (e) {}
+      }
+      // Keep suppressing pushes for a grace period so the remote state wins over
+      // any late client-side init; then release.
+      setTimeout(function () { joining = false; }, 1500);
+    });
   }
 
   function push() {
-    if (!ref) return;
-    var snap = serialize();
-    var copy = Object.assign({}, snap); delete copy.updatedAt;
-    lastWritten = JSON.stringify(copy);
-    snap.updatedAt = Date.now();
-    ref.set(snap).catch(function () {});
+    if (!ref || joining) return;
+    var json = JSON.stringify(serialize());
+    lastWritten = json;
+    ref.set({ s: json, t: Date.now() }).catch(function () {});
   }
 
   /* ---------- floating UI ---------- */
@@ -192,8 +212,7 @@
   function startRoom(room) {
     try { localStorage.setItem(ROOM_KEY, room); } catch (e) {}
     if (history.replaceState) {
-      var url = window.location.pathname + "?room=" + room + window.location.hash;
-      history.replaceState(null, "", url);
+      history.replaceState(null, "", window.location.pathname + "?room=" + room + window.location.hash);
     }
     start(room);
     var link = shareUrl(room);
@@ -219,13 +238,8 @@
   /* ---------- boot ---------- */
   function boot() {
     if (!window.__store) { setTimeout(boot, 200); return; }
-    if (!CONFIGURED) {
-      ui("⚠️ Sync not configured", "Add Firebase config in sync.js", null);
-      return;
-    }
     if (typeof window.firebase === "undefined" || !window.firebase.database) {
-      ui("⚠️ Firebase SDK missing", null, null);
-      return;
+      setTimeout(boot, 200); return;
     }
     try { if (!window.firebase.apps.length) window.firebase.initializeApp(FIREBASE_CONFIG); } catch (e) {}
 
