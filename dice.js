@@ -82,7 +82,7 @@
   function buildUI() {
     var css = el('style');
     css.textContent = [
-      "#ws-dice-panel{position:fixed;right:14px;top:76px;z-index:99998;width:250px;background:#1a1a2e;color:#eee;border:1px solid #333;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;box-shadow:0 8px 28px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden}",
+      "#ws-dice-panel{position:fixed;right:14px;top:76px;bottom:130px;z-index:99998;width:250px;background:#1a1a2e;color:#eee;border:1px solid #333;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;box-shadow:0 8px 28px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden}",
       "#ws-dice-header{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#12121f;border-bottom:1px solid #333}",
       "#ws-dice-title{font-weight:700;color:#ffb74d}",
       "#ws-dice-count-row{display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid #2a2a3a}",
@@ -93,7 +93,7 @@
       ".ws-dice-preset{background:#12121f;border:1px solid #333;color:#ccc;border-radius:6px;padding:3px 0;cursor:pointer;font-size:11px;flex:1;min-width:30px;text-align:center}",
       ".ws-dice-preset:hover{background:#1e1e33}",
       "#ws-dice-roll{background:#ff9800;border:0;color:#111;border-radius:6px;padding:8px;margin:8px 10px;font-weight:700;cursor:pointer;font-size:13px}",
-      "#ws-dice-results{padding:2px 10px 10px;display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto}",
+      "#ws-dice-results{padding:2px 10px 10px;display:flex;flex-direction:column;gap:8px;flex:1 1 auto;min-height:0;overflow-y:auto}",
       ".ws-dice-faces{display:flex;flex-wrap:wrap;gap:5px;font-size:48px;line-height:1.15;color:#ffd54f}",
       ".ws-dice-face{min-width:40px;text-align:center}",
       ".ws-dice-table{display:flex;flex-direction:column;gap:2px}",
