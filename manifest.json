@@ -1,6 +1,6 @@
 {
-  "name": "Rapid Ingress",
-  "short_name": "Rapid Ingress",
+  "name": "Warhammer Simulator",
+  "short_name": "Warhammer Simulator",
   "description": "Tabletop wargaming deployment and LOS testing tool",
   "start_url": "/",
   "display": "standalone",

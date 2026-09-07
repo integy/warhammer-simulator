@@ -2,7 +2,7 @@
 
 Battlefield / deployment / line-of-sight / terrain simulator for Warhammer 40,000.
 
-**Backbone:** forked verbatim from [Rapid Ingress](https://rapidingress.com/battlefield) (React + Vite SPA),
+**Backbone:** forked verbatim from [Warhammer Simulator](https://warhammersimulator.com/battlefield) (React + Vite SPA),
 a free 40k deployment / LOS / terrain tool. All source + data copied locally and made self-contained.
 
 ## Run
