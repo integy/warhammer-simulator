@@ -24,6 +24,29 @@ Live: **https://integy.github.io/warhammer-simulator/** (GitHub Pages, `main` br
 - `404.html` = `index.html` + hardcoded `<base href="/warhammer-simulator/">`; GitHub serves
   it for deep links (e.g. `/battlefield`) so the SPA router can render them.
 
+## Cross-device sync (Firebase Realtime Database)
+
+`sync.js` adds realtime multi-device board sync. Two devices that open the same **room**
+(`?room=<id>`) see each other's board live — bases, measurements, LOS/radius overlays,
+and layout/deployment selection.
+
+- **Start**: click the "Start sync" pill (bottom-right) → generates a room + gives a share link.
+- **Join**: open a shared `?room=` link.
+- Board state is serialized from the Zustand store (`window.__store`, exposed by a patch to
+  the bundle) and stored as a **single JSON string** under `/rooms/<id>/board` (Firebase
+  mangles raw arrays into keyed objects, so we stringify).
+- Echo suppression + a "joining" grace period prevent self-echo loops and the app's own
+  init (it picks a layout on load) from clobbering a remote board.
+- Firebase config lives at the top of `sync.js`. DB rules are **test mode (public read/write)**
+  — fine for a shared board tool; lock down before any public/production use.
+
+### Patching the minified bundle
+
+The app is a prebuilt minified React bundle (`assets/main-DG1ErbsX.js`). Notable patches:
+- `window.__store=U9(...)` — expose the Zustand store.
+- `hasActiveSubscription: ()=>true` + a synthetic `guest@warhammer-simulator` user — remove the paywall.
+- `basename: window.__APP_BASENAME` — GH Pages subpath routing.
+
 ## Architecture
 
 Single-page React app. The shell is `index.html`; the app bundle is `assets/main-DG1ErbsX.js`
