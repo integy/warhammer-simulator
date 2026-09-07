@@ -1,0 +1,22 @@
+{
+  "name": "Rapid Ingress",
+  "short_name": "Rapid Ingress",
+  "description": "Tabletop wargaming deployment and LOS testing tool",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#1a1a1a",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

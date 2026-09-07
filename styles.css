@@ -1,0 +1,5583 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Theme tokens — landing-derived amber accent (theme unification 2026-07-28).
+   Chrome only: canvas/game colors (default base blue, zone colors, terrain
+   component types) are deliberately NOT tokenized and stay as they were. */
+:root {
+    --accent: #e2a63d;
+    --accent-rgb: 226, 166, 61;
+    --accent-strong: #c98f2d;
+    --accent-text: #15181a;
+    /* Native form controls (selects, scrollbars) render for a dark page.
+       Without this, Windows paints dropdowns light with our light text. */
+    color-scheme: dark;
+}
+
+/* The working surfaces are controls, not copy - a drag or a fast double
+   click must never start a text selection (H feedback 2026-08-19).
+   Inputs stay selectable. */
+.battlefield-container,
+.sidebar,
+.toolbar,
+.planning-tray,
+.planning-topbar {
+    user-select: none;
+    -webkit-user-select: none;
+}
+.battlefield-container input,
+.sidebar input,
+.toolbar input,
+.planning-tray input {
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+/* Desktop zoom chips - top-right of the board (H feedback 2026-08-19).
+   Ctrl+scroll zooms at the cursor; these are the no-keyboard path. */
+.board-zoom-chips {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.board-zoom-chip {
+    width: 30px;
+    height: 30px;
+    font-size: 1rem;
+    line-height: 1;
+    color: #ddd;
+    background: rgba(26, 26, 26, 0.85);
+    border: 1px solid #444;
+    border-radius: 6px;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+}
+.board-zoom-chip:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: #fff;
+}
+.board-zoom-chip:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+.board-zoom-chip-reset {
+    border-color: var(--accent);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    /* One ground for the whole app - the landing/header ink (H 2026-08-20:
+       "header is nice now but rest is meh"). Panels sit on #191d20,
+       hairlines are #262b2f. */
+    background-color: #15181a;
+    color: #e0e0e0;
+    overflow-x: hidden;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    max-width: 100vw;
+}
+
+/* Header */
+.header {
+    background-color: #15181a;
+    padding: 0.5rem 1rem;
+    border-bottom: 2px solid #2c322e;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 100;
+}
+
+/* Accessible visually-hidden: present in DOM for crawlers/screen readers,
+   invisible on screen. Clip technique (NOT display:none, which Google discounts). */
+.sr-only {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Header type mirrors the landing page (H 2026-08-18): display-uppercase
+   brand, mono nav, bone/amber palette. Content stays app content. */
+.app-title {
+    font-family: "Big Shoulders Display", "Arial Narrow", sans-serif;
+    font-size: 1.35rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #e9e4d4;
+    transition: color 0.2s ease;
+}
+
+.app-title:hover {
+    color: var(--accent);
+}
+
+.header-links {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.header-nav-link {
+    color: #e0e0e0;
+    text-decoration: none;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 500;
+    padding: 0.4rem 0.6rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+/* Nav groups: Planning / Layout Editor hold their pages in a dropdown. */
+.nav-group {
+    position: relative;
+}
+
+.nav-group-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    flex-direction: column;
+    background-color: #1d2022;
+    border: 1px solid #3a3a3a;
+    border-radius: 6px;
+    padding: 0.25rem;
+    min-width: 175px;
+    z-index: 120;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+
+.nav-group.open .nav-group-dropdown {
+    display: flex;
+}
+
+.nav-group-dropdown .header-nav-link {
+    width: 100%;
+    text-align: left;
+    box-sizing: border-box;
+}
+
+.header-nav-link:hover {
+    color: var(--accent);
+    background-color: rgba(var(--accent-rgb), 0.1);
+}
+
+.header-nav-link.active {
+    color: var(--accent);
+    background-color: rgba(var(--accent-rgb), 0.15);
+}
+
+/* User Menu */
+.user-menu-container {
+    position: relative;
+}
+
+.user-menu-trigger {
+    cursor: pointer;
+}
+
+.user-menu-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.5rem;
+    background: #1d2022;
+    border: 1px solid #2c3237;
+    border-radius: 6px;
+    min-width: 180px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.user-menu-item {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    color: #e0e0e0;
+    text-decoration: none;
+    background: none;
+    border: none;
+    text-align: left;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.user-menu-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--accent);
+}
+
+.user-menu-item:first-child {
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
+.user-menu-item:last-child {
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+/* Toolbar */
+.toolbar {
+    background-color: #191d20;
+    border: 1px solid #262b2f;
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    row-gap: 0.4rem;
+    margin-bottom: 0.75rem;
+    position: relative;
+    z-index: 50;
+}
+
+.toolbar-section {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.toolbar-section-map {
+    margin-left: auto;
+    padding-left: 0.5rem;
+    flex-shrink: 0;
+}
+
+.toolbar-section-title {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-right: 0.35rem;
+    flex-shrink: 0;
+}
+
+.toolbar-section-title:not(:first-child) {
+    margin-left: 0.4rem;
+    padding-left: 0.5rem;
+    border-left: 1px solid #3a3a3a;
+}
+
+.toolbar-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.toolbar-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.55rem;
+    background-color: #1f2429;
+    border: 1px solid #333a40;
+    border-radius: 4px;
+    color: #c9ced3;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.toolbar-btn:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+}
+
+.toolbar-btn:active {
+    transform: translateY(0);
+}
+
+.toolbar-btn.active {
+    background-color: rgba(var(--accent-rgb), 0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* LOS button uses the selected color when active */
+#toolbar-los-btn.active {
+    background-color: rgba(var(--accent-rgb), 0.15);
+    border-color: #3a3a3a;
+}
+
+#toolbar-los-btn.active:hover {
+    background-color: rgba(var(--accent-rgb), 0.2);
+    border-color: var(--accent);
+}
+
+.toolbar-btn-icon-only {
+    min-width: auto;
+    padding: 0.35rem 0.5rem;
+}
+
+/* Instant tooltip for toolbar controls: shows the label immediately on
+   hover (native title has a ~1s delay). Applies to any toolbar element
+   carrying data-tip; inputs get it via a .toolbar-tip-wrap wrapper. */
+.toolbar-tip-wrap {
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+/* Unit (base) labels: hidden normally, shown instantly as a tooltip pill
+   while hovering the base on the canvas */
+.base-hover-tip {
+    display: none;
+}
+
+g[data-base-id]:hover + .base-hover-tip {
+    display: block;
+}
+
+.toolbar [data-tip] {
+    position: relative;
+}
+
+.toolbar [data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1c1c1c;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 0.28rem 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: #e0e0e0;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 300;
+}
+
+.toolbar-btn-icon-only span {
+    display: none;
+}
+
+.toolbar-btn-mixed {
+    opacity: 0.6;
+    border-style: dashed;
+}
+
+.toolbar-label-input {
+    background: #2d2d2d;
+    border: 1px solid #555;
+    border-radius: 3px;
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 6px;
+    width: 60px;
+    outline: none;
+    flex-shrink: 0;
+}
+.toolbar-label-input:focus {
+    border-color: var(--accent);
+}
+.toolbar-label-input::placeholder {
+    color: #666;
+}
+
+.toolbar-height-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.toolbar-height-label {
+    font-size: 11px;
+    color: #999;
+    user-select: none;
+    white-space: nowrap;
+}
+.toolbar-height-slider-wrap {
+    position: relative;
+    width: 110px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+}
+.toolbar-height-ticks {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+.toolbar-height-tick {
+    position: absolute;
+    top: 50%;
+    width: 2px;
+    height: 8px;
+    margin-left: -1px;
+    transform: translateY(-50%);
+    background: #888;
+    border-radius: 1px;
+}
+.toolbar-height-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    position: relative;
+    width: 100%;
+    height: 4px;
+    background: #3a3a3a;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    margin: 0;
+}
+.toolbar-height-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border: 2px solid #fff;
+    border-radius: 50%;
+    cursor: grab;
+}
+.toolbar-height-slider::-webkit-slider-thumb:active {
+    cursor: grabbing;
+}
+.toolbar-height-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border: 2px solid #fff;
+    border-radius: 50%;
+    cursor: grab;
+}
+.toolbar-height-slider.mixed::-webkit-slider-thumb {
+    background: #666;
+    border-color: #aaa;
+    opacity: 0.45;
+}
+.toolbar-height-slider.mixed::-moz-range-thumb {
+    background: #666;
+    border-color: #aaa;
+    opacity: 0.45;
+}
+.toolbar-height-input {
+    width: 52px;
+    padding: 2px 4px;
+    font-size: 11px;
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-radius: 3px;
+    color: #e0e0e0;
+    text-align: center;
+    outline: none;
+}
+.toolbar-height-input:focus {
+    border-color: var(--accent);
+}
+.toolbar-height-input::placeholder {
+    color: #666;
+}
+
+.toolbar-radius-selector {
+    display: flex;
+    gap: 0.2rem;
+    align-items: center;
+}
+
+.toolbar-btn-small {
+    padding: 0.25rem 0.45rem;
+    font-size: 0.7rem;
+    min-width: auto;
+}
+
+.toolbar-btn-small.active {
+    background-color: rgba(var(--accent-rgb), 0.15);
+    border-color: var(--accent);
+}
+
+#toolbar-radius-btn.active {
+    background-color: rgba(var(--accent-rgb), 0.15);
+    border-color: var(--accent);
+}
+
+#toolbar-measure-btn.active,
+#toolbar-measure-btn-unit.active {
+    background-color: rgba(var(--accent-rgb), 0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.toolbar-btn-danger:hover {
+    background-color: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 1);
+    color: rgba(239, 68, 68, 1);
+}
+
+#toolbar-color-btn,
+#toolbar-radius-color-btn,
+#toolbar-measurement-color-btn {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    min-width: auto;
+}
+
+#toolbar-color-btn:hover,
+#toolbar-radius-color-btn:hover,
+#toolbar-measurement-color-btn:hover {
+    border-color: rgba(255, 255, 255, 0.6);
+    transform: translateY(-1px) scale(1.02);
+}
+
+.toolbar-btn svg {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+}
+
+.toolbar-btn span {
+    white-space: nowrap;
+}
+
+/* Main Content */
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 300px;
+    background-color: #191d20;
+    padding: 1rem;
+    overflow-y: auto;
+    border-right: 1px solid #262b2f;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar section {
+    margin-bottom: 1.25rem;
+}
+
+/* Section titles carry the landing display face (H 2026-08-20: the
+   sidebar joins the theme). The planning tray hosts the same sections. */
+.sidebar h2,
+.planning-tray h2 {
+    font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: #e9e4d4;
+    border-bottom: 1px solid #262b2f;
+    padding-bottom: 0.35rem;
+    padding-top: 0;
+}
+
+.section-header-with-categories {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.section-header-with-categories h2 {
+    margin-bottom: 0;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.selectors-wrapper {
+    position: relative;
+}
+
+#selectors-container {
+    margin-left: 0;
+    padding-left: 0;
+    position: relative;
+}
+
+.category-buttons-fixed {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+#selectors-container .selector-section:first-of-type {
+    position: relative;
+    margin-left: 0;
+    padding-left: 0;
+}
+
+#selectors-container .selector-section:first-of-type h2 {
+    margin-left: 0;
+    padding-left: 0;
+    text-align: left;
+    position: static;
+}
+
+#selectors-container .selector-section {
+    margin-left: 0;
+    padding-left: 0;
+}
+
+#selectors-container .selector-section h2 {
+    margin-left: 0;
+    padding-left: 0;
+    text-align: left;
+    position: static;
+}
+
+/* Apply same left alignment to all selector-section h2 elements (including Base Sizes) */
+.selector-section h2 {
+    margin-left: 0;
+    padding-left: 0;
+    text-align: left;
+    position: static;
+}
+
+.category-buttons {
+    display: flex;
+    gap: 0.3rem;
+}
+
+.category-btn, .edition-btn, .disp-btn {
+    padding: 0.32rem 0.5rem;
+    background-color: #1f2429;
+    border: 1px solid #333a40;
+    border-radius: 4px;
+    color: #c9ced3;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.category-btn:hover, .edition-btn:hover, .disp-btn:hover {
+    border-color: var(--accent);
+    background-color: rgba(255, 255, 255, 0.05);
+    transform: translateY(-1px);
+}
+
+.category-btn.active, .edition-btn.active, .disp-btn.active {
+    background-color: rgba(var(--accent-rgb), 0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.selector-section {
+    margin-bottom: 1.25rem;
+    margin-left: 0;
+    padding-left: 0;
+    display: block;
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding-top: 1rem;
+    padding-bottom: 0.5rem;
+    text-align: center;
+    color: #7d858c;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    border-top: 1px solid #262b2f;
+}
+
+.sidebar-footer a {
+    color: #fff;
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+}
+
+.sidebar-footer a:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+}
+
+.selector-dropdown {
+    width: 100%;
+    padding: 0.55rem 0.6rem;
+    background-color: #14171a;
+    border: 1px solid #333a40;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.selector-dropdown:hover {
+    border-color: var(--accent);
+}
+
+.selector-dropdown:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.2);
+}
+
+.current-selection {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background-color: #1f2429;
+    border-radius: 4px;
+    border-left: 3px solid var(--accent);
+}
+
+.selection-label {
+    font-weight: 500;
+    color: #aaa;
+}
+
+.selection-value {
+    color: #fff;
+    font-weight: 600;
+}
+
+/* Base Sizes Grid */
+.base-sizes-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+}
+
+.base-size-item {
+    padding: 0.45rem;
+    background-color: #1f2429;
+    border: 1px solid #333a40;
+    border-radius: 4px;
+    color: #e0e0e0;
+    text-align: center;
+    font-size: 0.85rem;
+    cursor: grab;
+    transition: all 0.2s;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none; /* Allow our custom pointer handling */
+}
+
+.base-size-item:hover {
+    border-color: var(--accent);
+    background-color: rgba(255, 255, 255, 0.05);
+    transform: translateY(-1px);
+}
+
+.base-size-item:active {
+    cursor: grabbing;
+    transform: translateY(0);
+}
+
+.base-size-item.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+/* Shape Selector (New UI) */
+.shape-selector-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.shape-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background-color: #1f2429;
+    border: 1px solid #2c3237;
+    border-radius: 6px;
+    padding: 0.4rem;
+}
+
+.shape-size-dropdown {
+    flex: 1;
+    min-width: 0;
+    padding: 0.4rem 0.3rem;
+    background-color: #14171a;
+    border: 1px solid #333a40;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.7rem;
+    cursor: pointer;
+}
+
+.shape-size-dropdown:hover {
+    border-color: var(--accent);
+}
+
+.shape-size-dropdown:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.2);
+}
+
+.shape-qty-input {
+    width: 42px;
+    padding: 0.4rem 0.2rem;
+    background-color: #14171a;
+    border: 1px solid #333a40;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.7rem;
+    text-align: center;
+}
+
+.shape-qty-input:hover {
+    border-color: var(--accent);
+}
+
+.shape-qty-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.2);
+}
+
+/* Hide spinner buttons on number input */
+.shape-qty-input::-webkit-outer-spin-button,
+.shape-qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+.shape-qty-input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.shape-drag-button,
+.custom-size-drag-button {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #14171a;
+    border: 1px solid #333a40;
+    border-radius: 6px;
+    cursor: grab;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+
+.shape-drag-button:hover,
+.custom-size-drag-button:hover {
+    border-color: var(--accent);
+    background-color: rgba(255, 255, 255, 0.05);
+    transform: scale(1.05);
+}
+
+.shape-drag-button:active,
+.custom-size-drag-button:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+}
+
+.shape-drag-button.dragging,
+.custom-size-drag-button.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.shape-drag-button svg,
+.custom-size-drag-button svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* Battlefield */
+.battlefield-container {
+    position: relative; /* anchors the unit info card (bottom-left) */
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    background-color: #15181a;
+    padding: 0.5rem;
+    overflow: auto;
+    position: relative;
+}
+
+/* Snap to Grid Toggle */
+.toolbar-btn-snap {
+    position: relative;
+}
+
+.toolbar-btn-snap input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toolbar-btn-snap .toolbar-btn-content {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.toolbar-btn-snap input[type="checkbox"]:checked ~ .toolbar-btn-content {
+    color: var(--accent);
+}
+
+.toolbar-btn-snap:has(input[type="checkbox"]:checked) {
+    background-color: rgba(var(--accent-rgb), 0.15);
+    border-color: var(--accent);
+}
+
+.battlefield-wrapper {
+    width: 100%;
+    height: 0;
+    flex: 1;
+    min-height: 0;
+    background-color: #1c2023;
+    border: 1px solid #262b2f;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none; /* Prevent default touch behaviors like scrolling */
+    overflow: hidden;
+}
+
+.battlefield-svg {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    display: block;
+    touch-action: none; /* Prevent default touch behaviors */
+    user-select: none; /* Prevent text selection on drag */
+    -webkit-user-select: none;
+}
+
+
+/* Base Modal */
+.base-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 1rem;
+}
+
+/* Generic Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    background: #1b1f22;
+    border: 1px solid #2c3237;
+    border-radius: 8px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    /* Never exceed the viewport; scroll inside instead (body scroll is locked while open) */
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+}
+
+.modal-content h2 {
+    margin: 0 0 0.5rem 0;
+    font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+    color: #e9e4d4;
+    font-size: 1.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: center;
+}
+
+.modal-content .auth-subtitle {
+    margin: 0 0 1.5rem 0;
+    color: #aaa;
+    font-size: 0.95rem;
+    text-align: center;
+}
+
+.modal-content p {
+    margin: 0 0 1.5rem 0;
+    color: #e0e0e0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.2s;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    color: #fff;
+}
+
+.button {
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+    border: 2px solid transparent;
+}
+
+.button-primary {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+    color: var(--accent-text);
+    font-weight: 600;
+    border-color: var(--accent);
+}
+
+.button-primary:hover {
+    background: linear-gradient(135deg, var(--accent-strong) 0%, var(--accent) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.4);
+}
+
+.button-secondary {
+    background: transparent;
+    color: #e0e0e0;
+    border-color: #3a3a3a;
+}
+
+.button-secondary:hover {
+    background: #3a3a3a;
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* Subscription Gate Modal */
+.subscription-gate-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    backdrop-filter: blur(6px);
+}
+
+.subscription-gate-content {
+    max-width: 440px;
+    text-align: center;
+}
+
+.subscription-gate-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem;
+    text-align: left;
+}
+
+.subscription-gate-features li {
+    padding: 0.4rem 0;
+    color: #ccc;
+    font-size: 0.95rem;
+}
+
+.subscription-gate-features li::before {
+    content: '\2713';
+    color: var(--accent);
+    font-weight: bold;
+    margin-right: 0.75rem;
+}
+
+/* Gate popover (H 2026-08-18): the one paywall surface. Anchored next to the
+   locked control; .gate-popover-wall = the centered page-wall variant. */
+.gate-popover-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 1001;
+}
+
+.gate-popover-overlay.gate-popover-wall {
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+}
+
+.gate-popover {
+    position: fixed;
+    width: 300px;
+    max-width: calc(100vw - 20px);
+    background: #15181a;
+    border: 1px solid rgba(226, 166, 61, 0.45);
+    border-radius: 8px;
+    padding: 1.1rem 1.2rem 1rem;
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.6);
+    text-align: left;
+}
+
+.gate-popover-close {
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.gate-popover-close:hover {
+    color: #fff;
+}
+
+.gate-popover-eyebrow {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.35rem;
+}
+
+.gate-popover-title {
+    font-size: 1.05rem;
+    color: #fff;
+    margin: 0 0 0.4rem;
+}
+
+.gate-popover-body {
+    color: #999;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    margin: 0 0 0.85rem;
+}
+
+.gate-popover-plans {
+    display: flex;
+    gap: 0.45rem;
+    margin-bottom: 0.85rem;
+}
+
+.gate-popover-plan {
+    flex: 1;
+    padding: 0.45rem 0.3rem;
+    border-radius: 6px;
+    border: 1px solid #333;
+    background: transparent;
+    color: #aaa;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    align-items: center;
+}
+
+.gate-popover-plan.active {
+    border-color: var(--accent);
+    background: rgba(226, 166, 61, 0.12);
+    color: #fff;
+}
+
+.gate-popover-plan-price {
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.gate-popover-plan-label {
+    font-size: 0.68rem;
+}
+
+.gate-popover-cta {
+    width: 100%;
+    padding: 0.6rem;
+    border-radius: 6px;
+    border: 1px solid var(--accent);
+    background: rgba(226, 166, 61, 0.12);
+    color: var(--accent);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.gate-popover-cta:hover:not(:disabled) {
+    background: rgba(226, 166, 61, 0.2);
+}
+
+.gate-popover-cta:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.gate-popover-foot {
+    margin: 0.7rem 0 0;
+    font-size: 0.78rem;
+    color: #999;
+    text-align: center;
+}
+
+.gate-popover-back {
+    color: #888;
+    font-size: 0.78rem;
+    text-decoration: none;
+}
+
+/* Auth Pages */
+.auth-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+    background: #14171a;
+}
+
+.auth-card {
+    background: #2a2a2a;
+    border: 2px solid #3a3a3a;
+    border-radius: 12px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 450px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.auth-card h1 {
+    margin: 0 0 0.5rem 0;
+    color: #fff;
+    font-size: 2rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.auth-subtitle {
+    text-align: center;
+    color: #aaa;
+    margin: 0 0 2rem 0;
+    font-size: 0.95rem;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    color: #e0e0e0;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.form-input {
+    padding: 0.75rem;
+    background: #14171a;
+    border: 2px solid #3a3a3a;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+}
+
+.form-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.form-input::placeholder {
+    color: #666;
+}
+
+.password-input-wrapper {
+    position: relative;
+    display: flex;
+}
+
+.password-input-wrapper .form-input {
+    flex: 1;
+    padding-right: 2.75rem;
+}
+
+.password-toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 2.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 0;
+    color: #666;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.password-toggle:hover {
+    color: #e0e0e0;
+}
+
+.password-toggle:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.auth-error {
+    background: rgba(255, 66, 77, 0.1);
+    border: 1px solid rgba(255, 66, 77, 0.3);
+    border-radius: 6px;
+    padding: 0.75rem;
+    color: #ff6b6b;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.auth-success-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1.5rem;
+    background: rgba(var(--accent-rgb), 0.1);
+    border: 3px solid var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: var(--accent);
+    font-weight: bold;
+}
+
+.auth-help-text {
+    color: #aaa;
+    font-size: 0.9rem;
+    text-align: center;
+    margin: 0.5rem 0;
+}
+
+.auth-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.auth-submit {
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+.auth-footer {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #3a3a3a;
+    text-align: center;
+}
+
+.auth-footer p {
+    margin: 0;
+    color: #aaa;
+    font-size: 0.9rem;
+}
+
+.auth-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.auth-link:hover {
+    color: #6bb3ff;
+    text-decoration: underline;
+}
+
+.forgot-password-link {
+    text-align: right;
+    font-size: 0.85rem;
+    margin-top: -0.5rem;
+}
+
+/* Account Page */
+.account-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #3a3a3a;
+}
+
+.account-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.account-section h2 {
+    margin: 0 0 1rem 0;
+    color: #fff;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.account-section h3 {
+    margin: 0 0 1rem 0;
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.account-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.account-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: rgba(26, 26, 26, 0.5);
+    border-radius: 6px;
+}
+
+.account-label {
+    color: #aaa;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.account-value {
+    color: #e0e0e0;
+    font-size: 0.9rem;
+}
+
+.account-warning {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 6px;
+}
+
+.account-warning p {
+    margin: 0 0 0.5rem 0;
+    color: #ffc107;
+    font-size: 0.9rem;
+}
+
+.account-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.subscription-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.subscription-active {
+    background: rgba(var(--accent-rgb), 0.2);
+    color: var(--accent);
+    border: 1px solid rgba(var(--accent-rgb), 0.3);
+}
+
+.subscription-canceled {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.subscription-past_due {
+    background: rgba(255, 66, 77, 0.2);
+    color: #ff6b6b;
+    border: 1px solid rgba(255, 66, 77, 0.3);
+}
+
+/* PRD-032 retention screen. The cancel button must read as an equal peer of
+   the offer, never as a de-emphasised escape hatch, so both actions share the
+   same size and sit on one row. */
+.retention-reasons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin: 0.5rem 0 0.75rem;
+}
+
+.retention-reason-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.75rem;
+    background: rgba(26, 26, 26, 0.5);
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.retention-reason-row:hover {
+    border-color: #555;
+}
+
+.retention-reason-row input {
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.retention-reason-text {
+    width: 100%;
+    margin-top: 0.25rem;
+    padding: 0.6rem 0.75rem;
+    background: rgba(26, 26, 26, 0.5);
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #e0e0e0;
+    font-family: inherit;
+    font-size: 0.9rem;
+    resize: vertical;
+}
+
+.retention-offer {
+    margin-top: 0.9rem;
+    padding: 0.9rem;
+    background: rgba(var(--accent-rgb), 0.1);
+    border: 1px solid rgba(var(--accent-rgb), 0.35);
+    border-radius: 6px;
+    color: #e0e0e0;
+}
+
+.retention-offer strong {
+    color: var(--accent);
+}
+
+.retention-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 1.25rem;
+}
+
+.retention-actions .button {
+    flex: 1 1 12rem;
+    justify-content: center;
+    text-align: center;
+}
+
+/* Says exactly what the cancel button does. Never shrink or grey this out —
+   it is the honest half of a one-click cancel. */
+.retention-fineprint {
+    margin-top: 0.75rem;
+    text-align: center;
+}
+
+/* Account Modal Styles */
+.account-modal-content {
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.account-modal-content h2 {
+    margin: 0 0 1.5rem 0;
+    color: #fff;
+    font-size: 1.75rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.account-status-verified {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.account-status-unverified {
+    color: #ff6b6b;
+    font-weight: 600;
+}
+
+.account-logout-btn {
+    background: rgba(255, 66, 77, 0.1) !important;
+    border-color: #ff424d !important;
+    color: #ff6b6b !important;
+}
+
+.account-logout-btn:hover {
+    background: rgba(255, 66, 77, 0.2) !important;
+    border-color: #ff6b6b !important;
+    color: #ff8a8a !important;
+}
+
+.base-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+}
+
+.base-modal-content {
+    background-color: #2a2a2a;
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    padding: 1rem;
+    min-width: 200px;
+    max-width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.9);
+    position: relative;
+    z-index: 10001;
+}
+
+.base-size-selector-content {
+    min-width: 400px;
+    max-width: 600px;
+}
+
+.base-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #3a3a3a;
+    padding-bottom: 0.75rem;
+}
+
+.base-modal-header h3 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.1rem;
+}
+
+.base-modal-close {
+    background: none;
+    border: none;
+    color: #e0e0e0;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.base-modal-close:hover {
+    background-color: #3a3a3a;
+}
+
+.base-modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.base-modal-btn {
+    background-color: #3a3a3a;
+    border: 2px solid #4a4a4a;
+    border-radius: 6px;
+    padding: 0.75rem;
+    cursor: pointer;
+    color: #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    min-width: 50px;
+    min-height: 50px;
+}
+
+.base-modal-btn:hover {
+    background-color: #4a4a4a;
+    border-color: var(--accent);
+    transform: translateY(-2px);
+}
+
+.base-modal-btn:active {
+    transform: translateY(0);
+}
+
+.base-modal-btn-danger:hover {
+    background-color: #5a2a2a;
+    border-color: #ff4a4a;
+}
+
+.base-modal-btn.active {
+    background-color: #2a4a6a;
+    border-color: var(--accent);
+}
+
+.base-sizes-grid-modal {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.base-size-item-modal {
+    padding: 0.75rem;
+    background-color: #14171a;
+    border: 2px solid #3a3a3a;
+    border-radius: 4px;
+    color: #e0e0e0;
+    text-align: center;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.base-size-item-modal:hover {
+    border-color: var(--accent);
+    background-color: #2f3a4a;
+    transform: translateY(-1px);
+}
+
+.base-size-item-modal:active {
+    transform: translateY(0);
+}
+
+/* Responsive - Tablet */
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 250px;
+    }
+    
+    .base-sizes-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.35rem;
+    }
+    
+    .toolbar {
+        padding: 0.4rem 0.75rem;
+    }
+    
+    .toolbar-controls {
+        gap: 0.35rem;
+    }
+    
+    .toolbar-btn {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.7rem;
+    }
+    
+    .toolbar-btn svg {
+        width: 12px;
+        height: 12px;
+    }
+    
+    .toolbar-btn-icon-only {
+        padding: 0.3rem 0.45rem;
+    }
+}
+
+/* Shortcuts Popup */
+.shortcuts-popup {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: linear-gradient(145deg, #1f2429 0%, #15181a 100%);
+    border: 1px solid #444;
+    border-radius: 12px;
+    padding: 0;
+    z-index: 1000;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    min-width: 280px;
+    max-width: 360px;
+    overflow: hidden;
+    animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.shortcuts-popup.hidden {
+    display: none;
+}
+
+.shortcuts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: rgba(var(--accent-rgb), 0.1);
+    border-bottom: 1px solid #444;
+}
+
+.shortcuts-header h3 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 0;
+}
+
+.shortcuts-close {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.shortcuts-close:hover {
+    color: #fff;
+}
+
+.shortcuts-content {
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.shortcut-group {
+    margin-bottom: 0;
+}
+
+.shortcut-group h4 {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.3rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid #262b2f;
+}
+
+.shortcut-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.2rem 0;
+    font-size: 0.75rem;
+    gap: 0.5rem;
+}
+
+.shortcut-item span {
+    color: #ccc;
+    text-align: right;
+    flex: 1;
+    font-size: 0.7rem;
+}
+
+.shortcut-item kbd {
+    flex-shrink: 0;
+}
+
+kbd {
+    display: inline-block;
+    background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 0.1rem 0.3rem;
+    font-family: 'SF Mono', Monaco, 'Consolas', monospace;
+    font-size: 0.65rem;
+    color: #e0e0e0;
+    box-shadow: 0 2px 0 #222;
+    margin: 0 0.1rem;
+    white-space: nowrap;
+}
+
+/* Responsive - Mobile */
+@media (max-width: 768px) {
+    .shortcuts-popup {
+        bottom: 10px;
+        right: 10px;
+        left: 10px;
+        min-width: auto;
+        max-width: none;
+    }
+    
+    .shortcuts-content {
+        grid-template-columns: 1fr;
+        gap: 0.4rem;
+        padding: 0.4rem 0.6rem;
+    }
+    
+    .shortcut-group h4 {
+        font-size: 0.6rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .shortcut-item {
+        padding: 0.15rem 0;
+        font-size: 0.7rem;
+    }
+    
+    .shortcut-item span {
+        font-size: 0.65rem;
+    }
+    
+    kbd {
+        font-size: 0.6rem;
+        padding: 0.08rem 0.25rem;
+    }
+    
+    .app-title {
+        font-size: 1.2rem;
+    }
+    
+    .header {
+        padding: 0.4rem 0.75rem;
+        position: relative;
+        z-index: 100;
+    }
+    
+    .main-content {
+        flex-direction: column-reverse;
+        justify-content: flex-end;
+    }
+    
+    .sidebar {
+        width: 100%;
+        max-height: none;
+        border-right: none;
+        border-top: 2px solid #3a3a3a;
+        padding: 0.35rem 0.5rem;
+        overflow-y: auto;
+        display: grid;
+        grid-template-columns: 3fr 2fr;
+        gap: 0 0.5rem;
+        align-items: start;
+    }
+
+    .sidebar > section:first-child {
+        grid-column: 1;
+        grid-row: 1;
+        margin-bottom: 0;
+    }
+
+    .sidebar > .selectors-wrapper {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .sidebar > *:nth-child(n+3) {
+        grid-column: 1 / -1;
+    }
+
+    .sidebar section {
+        margin-bottom: 0.25rem;
+    }
+
+    .sidebar h2 {
+        font-size: 0.7rem;
+        margin-bottom: 0.15rem;
+        cursor: default;
+        user-select: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.1rem 0;
+        border-bottom: none;
+    }
+
+    /* Remove collapse arrows */
+    .sidebar h2::after {
+        display: none;
+    }
+
+    /* Override collapse hiding — always visible */
+    .selector-section.collapsed .selector-dropdown {
+        display: block;
+    }
+
+    .selector-section.collapsed .base-sizes-grid {
+        display: grid;
+    }
+
+    .selector-section.collapsed .shape-selector-container {
+        display: flex;
+    }
+
+    .section-header-with-categories {
+        gap: 0.25rem;
+    }
+
+    .category-buttons {
+        gap: 0.2rem;
+    }
+
+    .category-btn {
+        padding: 0.2rem 0.3rem;
+        font-size: 0.65rem;
+    }
+
+    .selector-section {
+        margin-bottom: 0.3rem;
+    }
+
+    .selector-section:last-of-type {
+        margin-bottom: 0;
+    }
+
+    .sidebar-footer {
+        grid-column: 1 / -1;
+        padding: 0.3rem 0.25rem;
+        font-size: 0.6rem;
+    }
+
+    .selector-dropdown {
+        padding: 0.3rem;
+        font-size: 0.8rem;
+    }
+
+    .base-sizes-grid {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 0.2rem;
+    }
+
+    .base-size-item {
+        padding: 0.2rem 0.1rem;
+        font-size: 0.6rem;
+    }
+
+    .shape-selector-container {
+        gap: 0.2rem;
+        margin-top: 0.15rem;
+    }
+
+    .shape-row {
+        padding: 0.2rem;
+        gap: 0.2rem;
+        border-width: 1px;
+        border-radius: 4px;
+    }
+
+    .shape-size-dropdown {
+        padding: 0.2rem 0.15rem;
+        font-size: 0.65rem;
+    }
+
+    .shape-qty-input {
+        width: 28px;
+        padding: 0.2rem 0.1rem;
+        font-size: 0.65rem;
+    }
+
+    .shape-drag-button,
+    .custom-size-drag-button {
+        width: 26px;
+        height: 26px;
+        border-width: 1px;
+        border-radius: 4px;
+    }
+
+    .shape-drag-button svg,
+    .custom-size-drag-button svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .battlefield-container {
+        flex: 0 1 auto;
+        min-height: auto;
+        padding: 0.15rem 0.2rem;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        overflow: visible;
+    }
+    
+    .toolbar {
+        padding: 0.35rem 0.5rem;
+        margin-bottom: 0;
+        margin-top: 0.5rem;
+        flex-shrink: 0;
+        width: 100%;
+        box-sizing: border-box;
+        z-index: 50;
+        order: 2;
+        flex-wrap: wrap;
+        row-gap: 0.35rem;
+        overflow: visible;
+    }
+    
+    /* Hide section titles entirely on mobile — icons speak for themselves, tooltips give names */
+    .toolbar-section-title {
+        display: none;
+    }
+
+    .toolbar-section-title:not(:first-child) {
+        margin-left: 0;
+        padding-left: 0;
+        border-left: none;
+    }
+    
+    .toolbar-controls {
+        gap: 0.3rem;
+    }
+    
+    .toolbar-btn {
+        padding: 0.28rem 0.45rem;
+        font-size: 0.65rem;
+        gap: 0.25rem;
+    }
+    
+    .toolbar-btn svg {
+        width: 11px;
+        height: 11px;
+    }
+    
+    .toolbar-btn span {
+        display: none; /* Hide text labels on mobile, keep icons only */
+    }
+
+    /* The Snap button wraps its SVG in .toolbar-btn-content (a span) — restore it so the icon still shows */
+    .toolbar-btn .toolbar-btn-content {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    .toolbar-btn-icon-only span {
+        display: none; /* Already hidden */
+    }
+    
+    .toolbar-btn-small {
+        padding: 0.22rem 0.38rem;
+        font-size: 0.65rem;
+    }
+    
+    .battlefield-wrapper {
+        flex: 0 0 auto;
+        width: 100%;
+        height: auto;
+        aspect-ratio: var(--board-aspect);
+        min-height: 0;
+        order: 1;
+        margin-bottom: 0;
+    }
+    
+    /* Make base size modal more compact on mobile */
+    .base-size-selector-content {
+        min-width: 85vw;
+        max-width: 90vw;
+        padding: 0.5rem;
+    }
+    
+    .base-modal-header {
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.4rem;
+    }
+    
+    .base-modal-header h3 {
+        font-size: 0.9rem;
+    }
+    
+    .base-sizes-grid-modal {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.3rem;
+        max-height: 50vh;
+    }
+    
+    .base-size-item-modal {
+        padding: 0.5rem 0.2rem;
+        font-size: 0.7rem;
+    }
+
+    /* ─────────────────────────────────────────────────────────────
+       PRD-001: scrollable homepage + single-column sidebar + bigger
+       touch targets. These come LAST in the 768px block so they win
+       over the cramped fit-to-one-screen rules above. Desktop (≥769px)
+       is untouched.
+       ───────────────────────────────────────────────────────────── */
+
+    /* Page scrolls instead of being crammed into one viewport */
+    .main-content {
+        overflow: visible;
+        justify-content: flex-start;
+    }
+
+    .battlefield-container {
+        overflow: visible;
+    }
+
+    /* Mobile: Base Sizes (left) and the match selectors (right) sit
+       side-by-side UNDER the map, so dispositions are reachable without
+       scrolling past a full-width Base Sizes panel. The child placement
+       (col 1 / col 2 / full-width below) is defined in the grid block above.
+       The 11e disposition lists collapse to one column (see .e11e-disp-grid
+       below) so they don't clip in the narrower right column. */
+    .sidebar {
+        display: grid;
+        grid-template-columns: 3fr 2fr;
+        gap: 0 0.5rem;
+        align-items: start;
+        max-height: none;
+        overflow: visible;
+    }
+
+    /* Narrow right column: stack the two disposition lists vertically so
+       each button keeps the full column width instead of clipping. */
+    .e11e-disp-grid {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    /* Right column rhythm: kill the dead gap under the edition switch and
+       let the 11e setup sit tight up against it. */
+    .sidebar > .selectors-wrapper .edition-switch {
+        margin-bottom: 0.4rem;
+    }
+    .sidebar > .selectors-wrapper .e11e {
+        padding: 2px 6px 0;
+    }
+    /* Edition toggle: slightly leaner so it doesn't dominate the column. */
+    .sidebar > .selectors-wrapper .edition-btn {
+        min-height: 32px;
+        padding: 0.3rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    /* The 11e mission box is a desktop card (translucent panel + border).
+       In the narrow mobile column it reads as a stray floating rectangle of
+       a different shade. Flatten it so the right column is one clean surface
+       on the #252525 sidebar — like the plain dropdown column used to be. */
+    .sidebar > .selectors-wrapper .e11e-missions {
+        background: transparent;
+        border-color: transparent;
+        padding: 2px 0;
+    }
+    /* Keep the sections from jamming together. */
+    .sidebar > .selectors-wrapper .e11e-section {
+        margin-bottom: 0.6rem;
+    }
+
+    /* Board keeps a sensible height; controls scroll into view below it */
+    .battlefield-wrapper {
+        position: relative;
+        max-height: 72vh;
+    }
+
+    /* Comfortable tap targets (≥ ~40px) */
+    .selector-dropdown {
+        padding: 0.5rem;
+        font-size: 0.9rem;
+        min-height: 40px;
+    }
+
+    .category-btn,
+    .edition-btn {
+        min-height: 38px;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.8rem;
+    }
+
+    .base-sizes-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.3rem;
+    }
+
+    .base-size-item {
+        min-height: 42px;
+        padding: 0.4rem 0.2rem;
+        font-size: 0.7rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .shape-size-dropdown {
+        padding: 0.4rem 0.3rem;
+        font-size: 0.8rem;
+        min-height: 38px;
+    }
+
+    .shape-qty-input {
+        width: 44px;
+        padding: 0.4rem 0.2rem;
+        font-size: 0.8rem;
+        min-height: 38px;
+    }
+
+    .shape-drag-button,
+    .custom-size-drag-button {
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+    }
+
+    .shape-drag-button svg,
+    .custom-size-drag-button svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    /* Mobile-only reset-view control for the pinch-zoomed board */
+    .board-reset-view-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 20;
+        padding: 0.4rem 0.7rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #fff;
+        background: rgba(26, 26, 26, 0.85);
+        border: 1px solid var(--accent);
+        border-radius: 6px;
+        cursor: pointer;
+        backdrop-filter: blur(4px);
+        min-height: 36px;
+    }
+
+    /* Modals: comfortable padding + content always reachable (internal
+       scroll) while the page scroll is locked behind the overlay. Covers
+       Login/Signup and the first-visit popup (both use .modal-content). */
+    .modal-content {
+        padding: 1.25rem;
+        max-height: 90vh;
+        max-height: 90dvh;
+        overflow-y: auto;
+    }
+
+    .modal-content .button,
+    .auth-card .button,
+    .auth-card .auth-submit {
+        min-height: 44px;
+    }
+
+    /* Account / checkout cards */
+    .auth-card {
+        padding: 1.5rem;
+    }
+
+    /* Keep the user-menu dropdown inside the screen on small phones */
+    .user-menu-dropdown {
+        right: 8px;
+        max-width: calc(100vw - 16px);
+    }
+}
+
+/* Responsive - Very Small Mobile */
+@media (max-width: 480px) {
+    .app-title {
+        font-size: 1rem;
+    }
+    
+    .header-nav-link {
+        font-size: 0.8rem;
+        padding: 0.3rem 0.5rem;
+    }
+    
+    .base-sizes-grid {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 0.2rem;
+    }
+    
+    .base-size-item {
+        padding: 0.25rem 0.1rem;
+        font-size: 0.6rem;
+    }
+    
+    .toolbar-section-title {
+        display: none; /* Hide section titles on very small screens */
+    }
+    
+    .toolbar-btn {
+        padding: 0.3rem;
+        min-width: 32px;
+        min-height: 32px;
+        justify-content: center;
+    }
+    
+    .toolbar-btn-icon-only {
+        padding: 0.3rem;
+    }
+}
+
+/* Responsive - Extra Small Screens (< 360px) */
+@media (max-width: 360px) {
+    .header {
+        padding: 0.3rem 0.5rem;
+    }
+    
+    .app-title {
+        font-size: 0.9rem;
+    }
+    
+    .header-nav-link {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.4rem;
+    }
+    
+    .sidebar {
+        padding: 0.25rem 0.4rem;
+        max-height: 25vh;
+    }
+
+    .sidebar h2 {
+        font-size: 0.65rem;
+    }
+
+    .category-btn {
+        padding: 0.15rem 0.25rem;
+        font-size: 0.6rem;
+    }
+
+    .selector-dropdown {
+        padding: 0.25rem;
+        font-size: 0.75rem;
+    }
+
+    .base-sizes-grid {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 0.15rem;
+    }
+
+    .base-size-item {
+        padding: 0.15rem 0.05rem;
+        font-size: 0.5rem;
+    }
+
+    .shape-row {
+        padding: 0.15rem;
+        gap: 0.15rem;
+    }
+
+    .shape-drag-button,
+    .custom-size-drag-button {
+        width: 22px;
+        height: 22px;
+    }
+
+    .shape-drag-button svg,
+    .custom-size-drag-button svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .shape-qty-input {
+        width: 24px;
+        font-size: 0.6rem;
+    }
+
+    .shape-size-dropdown {
+        font-size: 0.55rem;
+        padding: 0.1rem;
+    }
+    
+    .toolbar {
+        padding: 0.3rem 0.4rem;
+    }
+    
+    .toolbar-btn {
+        padding: 0.25rem;
+        min-width: 30px;
+        min-height: 30px;
+    }
+    
+    .toolbar-btn svg {
+        width: 10px;
+        height: 10px;
+    }
+    
+    .base-size-selector-content {
+        min-width: 92vw;
+        padding: 0.4rem;
+    }
+    
+    .base-modal-header h3 {
+        font-size: 0.85rem;
+    }
+    
+    .base-sizes-grid-modal {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.25rem;
+    }
+    
+    .base-size-item-modal {
+        padding: 0.4rem 0.15rem;
+        font-size: 0.65rem;
+    }
+}
+
+/* ──────────────────────────────────────────────
+   List Page — My Layouts, My Boards
+   ────────────────────────────────────────────── */
+
+.list-page {
+    flex: 1;
+    background: #15181a;
+    color: #b6bdc4;
+    padding: 40px 24px 64px;
+}
+
+.list-page-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.list-page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    gap: 12px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #262b2f;
+    padding-bottom: 18px;
+}
+
+.list-page-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.list-page-header-left {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.list-page-title {
+    margin: 0;
+    font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+    font-size: 2.1rem;
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #e9e4d4;
+    font-weight: 700;
+}
+
+.list-page-subtitle {
+    margin: 8px 0 0 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #7d858c;
+}
+
+.list-page-back {
+    color: #888;
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.2s;
+}
+
+.list-page-back:hover {
+    color: var(--accent);
+}
+
+.list-page-action {
+    padding: 8px 16px;
+    background: rgba(226, 166, 61, 0.08);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    color: var(--accent);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+.list-page-action:hover {
+    background: rgba(226, 166, 61, 0.18);
+}
+
+/* Status / empty states */
+.list-page-status {
+    text-align: center;
+    padding: 48px;
+    color: #888;
+}
+
+.list-page-empty {
+    text-align: center;
+    padding: 48px;
+    background: #191d20;
+    border-radius: 8px;
+    border: 1px solid #262b2f;
+}
+
+.list-page-empty h3 {
+    margin: 0 0 8px 0;
+    font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #e9e4d4;
+    font-size: 1.4rem;
+}
+
+.list-page-empty p {
+    margin: 0;
+    color: #aaa;
+}
+
+.list-page-empty-link {
+    display: inline-block;
+    margin-top: 16px;
+    padding: 10px 24px;
+    background: rgba(226, 166, 61, 0.08);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    text-decoration: none;
+    border-radius: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: background 0.15s;
+}
+
+.list-page-empty-link:hover {
+    background: rgba(226, 166, 61, 0.18);
+}
+
+/* Card grid */
+.list-page-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+/* Cards */
+.list-card {
+    background: #191d20;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #262b2f;
+    transition: border-color 0.15s;
+    display: flex;
+    flex-direction: column;
+}
+
+.list-card:hover {
+    border-color: rgba(226, 166, 61, 0.55);
+}
+
+.list-card-preview {
+    padding: 8px;
+    background: #14171a;
+    display: flex;
+    justify-content: center;
+}
+
+.list-card-body {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.list-card-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    padding: 20px 16px 16px;
+    flex: 1;
+}
+
+.list-card-name {
+    font-weight: 600;
+    color: #e9e4d4;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.list-card-name-lg {
+    display: block;
+    font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #e9e4d4;
+    font-size: 1.35rem;
+    line-height: 1.1;
+    margin: 0 0 10px 0;
+}
+
+.list-card-meta {
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 8px;
+}
+
+.list-card-meta-line {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.02em;
+    color: #8a9199;
+    margin: 0;
+}
+
+.list-card-meta-line-dim {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.02em;
+    color: #666d74;
+    margin: 7px 0 0 0;
+}
+
+/* Header buttons must not stretch like card buttons do */
+.list-page-header .list-card-btn-primary {
+    flex: 0 0 auto;
+    padding: 6px 12px;
+}
+
+/* Card buttons */
+.list-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: auto;
+    padding: 2px 16px 16px;
+}
+
+/* Pages that pass their own inline padding keep it (inline wins); pages
+   without one get the default above. Nested bodies pad themselves. */
+.list-card-body .list-card-actions {
+    padding: 2px 0 0;
+}
+
+.list-card-btn {
+    padding: 7px 12px;
+    background: transparent;
+    border: 1px solid #333a40;
+    border-radius: 5px;
+    color: #9aa1a7;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.list-card-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #4a5157;
+    color: #d5dae0;
+}
+
+.list-card-btn-primary {
+    flex: 1;
+    min-width: 60px;
+    padding: 7px 12px;
+    background: rgba(226, 166, 61, 0.1);
+    border: 1px solid var(--accent);
+    border-radius: 5px;
+    color: var(--accent);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.list-card-btn-primary:hover {
+    background: rgba(226, 166, 61, 0.22);
+}
+
+.list-card-btn-accent {
+    padding: 7px 12px;
+    background: transparent;
+    border: 1px solid #333a40;
+    border-radius: 5px;
+    color: var(--accent);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.66rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.list-card-btn-accent:hover {
+    background: rgba(var(--accent-rgb), 0.1);
+    border-color: var(--accent);
+}
+
+.list-card-btn-danger {
+    padding: 7px 12px;
+    background: transparent;
+    border: 1px solid #3d3236;
+    border-radius: 5px;
+    color: #cc5555;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.list-card-btn-danger:hover {
+    background: rgba(204, 68, 68, 0.15);
+    border-color: #cc4444;
+}
+
+.list-card-btn-danger:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ──────────────────────────────────────────────
+   Hamburger Menu (Header)
+   ────────────────────────────────────────────── */
+
+.header-nav-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: #e0e0e0;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px 8px;
+    line-height: 1;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.header-nav-toggle:hover {
+    background: rgba(var(--accent-rgb), 0.1);
+}
+
+/* ──────────────────────────────────────────────
+   Responsive — List Pages + Hamburger
+   ────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    /* Hamburger menu */
+    .header-nav-toggle {
+        display: block;
+    }
+
+    .header-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #2a2a2a;
+        border-bottom: 2px solid #3a3a3a;
+        flex-direction: column;
+        padding: 8px 0;
+        gap: 0;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        z-index: 99;
+    }
+
+    .header-links.open {
+        display: flex;
+    }
+
+    /* Mobile: groups flatten - the trigger becomes a section label and
+       the child links always show, indented. */
+    .header-links .nav-group {
+        width: 100%;
+    }
+
+    .header-links .nav-group-trigger {
+        pointer-events: none;
+        color: #8d938c;
+    }
+
+    .header-links .nav-group-dropdown {
+        display: flex;
+        position: static;
+        border: none;
+        box-shadow: none;
+        background: none;
+        padding: 0 0 0 1rem;
+        min-width: 0;
+    }
+
+    .header-links .header-nav-link,
+    .header-links .user-menu-container,
+    .header-links .button {
+        width: 100%;
+        padding: 10px 16px;
+        border-radius: 0;
+        text-align: left;
+        box-sizing: border-box;
+    }
+
+    .header-links .button.button-primary {
+        background: none;
+        border: none;
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 0.9rem;
+        padding: 10px 16px;
+        text-align: left;
+    }
+
+    /* List page */
+    .list-page {
+        padding: 16px;
+    }
+
+    .list-page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .list-page-header-left {
+        margin-bottom: 8px;
+    }
+
+    /* The header column already stretches a lone action button. Inside
+       .list-page-header-actions the buttons share a row instead. */
+
+    .list-page-grid {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+}
+
+@media (max-width: 480px) {
+    .list-page {
+        padding: 12px;
+    }
+
+    .list-page-title {
+        font-size: 20px;
+    }
+
+    .list-page-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .list-card-body {
+        padding: 10px;
+    }
+
+    .list-card-link {
+        padding: 12px;
+    }
+
+    .list-card-name-lg {
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 360px) {
+    .list-page {
+        padding: 8px;
+    }
+
+    .list-page-header {
+        margin-bottom: 16px;
+    }
+}
+
+/* ── First-visit welcome modal ── */
+
+.first-visit-modal {
+    max-width: 540px;
+    text-align: center;
+    padding: 1.5rem;
+}
+
+.fv-media {
+    border-radius: 6px;
+    overflow: hidden;
+    margin: -0.5rem -0.5rem 1rem;
+    background: #14171a;
+}
+
+.fv-media video,
+.fv-media img {
+    width: 100%;
+    display: block;
+    border-radius: 6px;
+}
+
+.fv-title {
+    font-size: 1.3rem !important;
+    font-weight: 700;
+    color: #fff !important;
+    margin-bottom: 0.25rem !important;
+}
+
+.fv-subtitle {
+    color: #999 !important;
+    font-size: 0.9rem !important;
+    margin-bottom: 1rem !important;
+}
+
+.fv-comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    text-align: left;
+}
+
+.fv-tier {
+    background: #191d20;
+    border-radius: 6px;
+    padding: 0.75rem;
+    border: 1px solid #333;
+}
+
+.fv-tier-pro {
+    border-color: rgba(212, 175, 55, 0.3);
+}
+
+.fv-tier-heading {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid #262b2f;
+}
+
+.fv-heading-pro {
+    color: #d4af37;
+    border-bottom-color: rgba(212, 175, 55, 0.25);
+}
+
+.fv-price {
+    font-weight: 400;
+    opacity: 0.65;
+    font-size: 0.8rem;
+}
+
+.fv-tier-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.fv-tier-list li {
+    padding: 0.25rem 0;
+    font-size: 0.8rem;
+    color: #ccc;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+}
+
+.fv-inherited {
+    opacity: 0.4;
+}
+
+.fv-check {
+    color: #fff;
+    font-weight: 700;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    margin-top: 1px;
+    opacity: 0.6;
+}
+
+.fv-check-pro {
+    color: #d4af37;
+    opacity: 1;
+}
+
+/* First-visit primary follows the standard amber primary (theme unification
+   2026-07-28; the old green override clashed with the accent border). */
+.fv-btn-primary {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.fv-btn-secondary {
+    background: transparent;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.5rem;
+}
+
+.fv-btn-secondary:hover {
+    color: #fff;
+}
+
+@media (max-width: 600px) {
+    .first-visit-modal {
+        padding: 1rem;
+    }
+
+    /* Stack the Free / Pro comparison so it isn't cramped on phones */
+    .fv-comparison {
+        grid-template-columns: 1fr;
+    }
+
+    .fv-title {
+        font-size: 1.1rem !important;
+    }
+}
+
+/* ========== Editor Mobile Responsive ========== */
+
+/* Desktop defaults */
+.editor-mobile-panel {
+    display: none;
+}
+
+.editor-tab-bar {
+    display: none;
+}
+
+.editor-tab {
+    flex: 1;
+    padding: 8px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #888;
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.editor-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+.editor-tab:hover:not(.active) {
+    color: #bbb;
+}
+
+.editor-tab-content {
+    overflow-y: auto;
+}
+
+/* Editor Mobile (<= 768px) */
+@media (max-width: 768px) {
+    .editor-body {
+        flex-direction: column !important;
+    }
+
+    .editor-canvas-wrapper {
+        flex: 0 0 auto !important;
+        width: 100% !important;
+        aspect-ratio: var(--board-aspect);
+    }
+
+    .editor-mobile-panel {
+        display: flex;
+        flex-direction: column;
+        border-top: 1px solid #262b2f;
+    }
+
+    .editor-tab-bar {
+        display: flex;
+        background: #191d20;
+        border-bottom: 1px solid #262b2f;
+    }
+
+    .editor-tab-content {
+        max-height: 35vh;
+    }
+
+    .editor-toolbar {
+        gap: 6px !important;
+        padding: 6px 8px !important;
+        overflow-x: auto;
+        flex-wrap: nowrap !important;
+    }
+
+    .editor-toolbar .etb-label {
+        display: none;
+    }
+
+    .editor-toolbar-name {
+        width: 100px !important;
+    }
+
+    .editor-toolbar-dims input {
+        width: 40px !important;
+    }
+
+    .editor-palette {
+        width: 100% !important;
+        border-right: none !important;
+    }
+
+    .editor-properties {
+        width: 100% !important;
+        border-left: none !important;
+    }
+}
+
+/* Editor Very Small Mobile (<= 480px) */
+@media (max-width: 480px) {
+    .editor-toolbar-name {
+        width: 80px !important;
+    }
+
+    .editor-toolbar-dims input {
+        width: 32px !important;
+    }
+
+    .editor-tab-content {
+        max-height: 30vh;
+    }
+}
+
+/* --- Army List Import --- */
+.base-sizes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.base-sizes-header h2 {
+    flex: 1;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.import-army-btn {
+    background: rgba(var(--accent-rgb), 0.08);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 999px;
+    padding: 0.2rem 0.7rem;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.64rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    margin-right: 0.5rem;
+}
+
+.import-army-btn:hover {
+    background: var(--accent);
+    color: var(--accent-text);
+}
+
+/* Import modal - overhauled 2026-08-20 (H: "could use a HUGE overhaul").
+   Landing-theme surfaces: mono labels, hairline rules, no raw grays. */
+.import-army-modal {
+    max-width: 680px;
+    width: 92%;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.import-army-modal h2 {
+    text-align: left;
+    margin-bottom: 0.15rem;
+}
+
+.import-army-sub {
+    margin: 0 0 1rem;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #7d858c;
+    text-align: left;
+}
+
+.import-army-label {
+    display: block;
+    margin: 1rem 0 0.4rem;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.66rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #9aa1a7;
+}
+
+/* .modal-content p outranks a bare class - keep the modal scope on it. */
+.import-army-modal .import-army-hint {
+    margin: 0.55rem 0 0;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.62rem;
+    line-height: 1.7;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #7d858c;
+    text-align: left;
+}
+
+.import-army-modal .import-army-hint strong {
+    color: #9aa1a7;
+    font-weight: 600;
+}
+
+.import-army-saved {
+    background: #14171a;
+    border: 1px solid #262b2f;
+    border-radius: 6px;
+    padding: 0.35rem 0.75rem;
+}
+
+.import-army-saved-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.4rem 0;
+}
+
+.import-army-saved-row + .import-army-saved-row {
+    border-top: 1px solid #22272b;
+}
+
+.import-army-saved-name {
+    color: #d5dae0;
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.import-army-saved-meta {
+    color: #666d74;
+    margin-left: 0.5rem;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.import-army-textarea {
+    width: 100%;
+    min-height: 190px;
+    background: #14171a;
+    border: 1px solid #333a40;
+    border-radius: 6px;
+    color: #e0e0e0;
+    padding: 0.7rem;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    resize: vertical;
+    box-sizing: border-box;
+    margin-top: 0.25rem;
+}
+
+.import-army-textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.import-army-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.import-preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+    background: #14171a;
+    border: 1px solid #262b2f;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+/* Attachment note under a unit name in the import preview */
+.import-attach-note {
+    display: block;
+    color: var(--accent);
+    font-size: 0.72rem;
+    opacity: 0.85;
+    margin-top: 0.1rem;
+}
+
+.import-preview-table th,
+.import-preview-table td {
+    text-align: left;
+    padding: 0.42rem 0.65rem;
+    border-bottom: 1px solid #22272b;
+    color: #d5dae0;
+}
+
+.import-preview-table td:nth-child(2),
+.import-preview-table td:nth-child(3) {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.72rem;
+    color: #9aa1a7;
+    white-space: nowrap;
+}
+
+.import-preview-table th {
+    color: #7d858c;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    background: #191d20;
+}
+
+.import-preview-table tr:last-child td {
+    border-bottom: none;
+}
+
+.import-skip-list td {
+    color: #b98a8a;
+}
+
+/* Facts row above the preview table: faction, model counts, format */
+.import-army-facts {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 0.25rem 0 0.75rem;
+}
+
+.import-army-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.22rem 0.6rem;
+    background: #14171a;
+    border: 1px solid #2c3237;
+    border-radius: 999px;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.64rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #9aa1a7;
+    white-space: nowrap;
+}
+
+.import-army-chip strong {
+    color: #e9e4d4;
+    font-weight: 600;
+}
+
+.import-army-chip-accent {
+    border-color: rgba(var(--accent-rgb), 0.55);
+    color: var(--accent);
+}
+
+.import-army-chip-accent strong {
+    color: var(--accent);
+}
+
+/* =====================================================================
+   11e match setup (Edition11eSetup) + V2 "Condensed" treatment.
+   Promoted from the /harness V2 A/B test: side-by-side dispositions,
+   collapse-to-summary, Layout on top, tighter rhythm. Same features.
+   ===================================================================== */
+
+.e11e {
+    padding: 8px 10px;
+}
+.e11e-section {
+    margin-bottom: 0.7rem;
+}
+.e11e-eyebrow {
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #8f8f93;
+    margin-bottom: 5px;
+}
+
+/* Layout A/B/C row (top) */
+.e11e-variant-row {
+    display: flex;
+    gap: 6px;
+}
+.e11e-variant-btn {
+    flex: 1;
+}
+.e11e-variant-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+.e11e-random {
+    width: 100%;
+    margin-top: 7px;
+}
+/* Layout row now sits below the disposition summary — add a separating gap */
+.e11e-layout-section {
+    margin-top: 0.7rem;
+}
+
+/* THE condensing move: two disposition columns side-by-side */
+.e11e-disp-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.e11e-disp-col-label {
+    font-size: 10px;
+    color: #999;
+    margin-bottom: 4px;
+}
+.e11e-disp-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.e11e-disp-btn {
+    width: 100%;
+    text-align: left;
+    padding: 4px 6px;
+    font-size: 10.5px;
+    border-width: 1px;
+    border-radius: 5px;
+}
+
+/* Resolved missions — clearer per-player labelling; doubles as the resting
+   state + click-to-edit affordance when the pickers are collapsed. */
+.e11e-missions {
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid transparent;
+    border-radius: 6px;
+}
+.e11e-missions-clickable {
+    cursor: pointer;
+    border-color: #3a3a3a;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.e11e-missions-clickable:hover {
+    border-color: var(--accent);
+    background-color: rgba(var(--accent-rgb), 0.08);
+}
+.e11e-missions-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9ad;
+    margin-bottom: 6px;
+}
+.e11e-missions-edit {
+    font-weight: 600;
+    color: #8f8f93;
+    letter-spacing: 0;
+    text-transform: none;
+}
+.e11e-mission {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 3px;
+}
+.e11e-mission-player {
+    flex-shrink: 0;
+    min-width: 56px;
+    white-space: nowrap;
+    font-size: 10.5px;
+    color: #888;
+}
+.e11e-mission-name {
+    font-size: 12px;
+    line-height: 1.25;
+    font-weight: 600;
+    color: #fff;
+}
+
+/* ---- V2 "Condensed" rail/base-size/toolbar treatment ---- */
+/* Desktop only: this fixed width must NOT apply at ≤768px, where the sidebar
+   goes full-width below the map (otherwise the side-by-side grid content
+   overflows the 280px background box and spills onto the page bg). */
+@media (min-width: 769px) {
+    .sidebar {
+        width: 280px;
+    }
+}
+.shape-selector-container {
+    gap: 0.35rem;
+    margin-top: 0.35rem;
+}
+.shape-row {
+    padding: 0.3rem;
+    gap: 0.3rem;
+    border-width: 1px;
+}
+.shape-drag-button,
+.custom-size-drag-button {
+    width: 30px;
+    height: 30px;
+    border-width: 1px;
+}
+.shape-drag-button svg,
+.custom-size-drag-button svg {
+    width: 20px;
+    height: 20px;
+}
+.selector-section {
+    margin-bottom: 0.9rem;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PRD-001: shared prose-page padding (Legal + Giveaways). Desktop
+   keeps the original 2rem; mobile tightens it so the ~720px column
+   isn't cramped on a phone.
+   ───────────────────────────────────────────────────────────── */
+.legal-prose {
+    padding: 2rem 2rem 4rem;
+}
+
+@media (max-width: 768px) {
+    .legal-prose {
+        padding: 1.25rem 1rem 3rem;
+    }
+}
+
+/* ── Unit Picker (PRD-062) ─────────────────────────────────────────────── */
+/* Lives inside the base-selector surface, after the custom row. The tray
+   variant reuses the same classes inside Battle Mode's dark panel. */
+
+/* Option A (H 2026-08-09): the sidebar holds one prominent entry row;
+   the search + list live in a flyout beside the sidebar. */
+.unit-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.picker-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.picker-select-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+}
+
+.picker-lock-overlay {
+    position: absolute;
+    right: 1.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    pointer-events: none;
+    color: #cfcfcf;
+    z-index: 2;
+}
+
+.picker-entry-select {
+    flex: 1;
+    min-width: 0;
+    padding: 0.5rem 0.4rem;
+    background-color: rgba(var(--accent-rgb), 0.08);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    color: var(--accent);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.picker-entry-select:hover {
+    background-color: rgba(var(--accent-rgb), 0.18);
+}
+
+.picker-side-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid #3a3a3a;
+    background: #14171a;
+    padding: 0;
+    cursor: pointer;
+}
+
+.picker-side-dot.picker-side-blue { border-color: #4a9eff; }
+.picker-side-dot.picker-side-blue.active { background: #4a9eff; }
+.picker-side-dot.picker-side-red { border-color: #ff4a4a; }
+.picker-side-dot.picker-side-red.active { background: #ff4a4a; }
+
+.picker-flyout {
+    position: fixed;
+    left: 308px;
+    width: 280px;
+    max-height: 82vh;
+    z-index: 900;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    background-color: #242424;
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+    padding: 0.6rem;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.picker-flyout-inline {
+    position: static;
+    width: auto;
+    max-height: none;
+    box-shadow: none;
+    padding: 0.4rem 0;
+    border: none;
+    background: none;
+}
+
+.picker-flyout-close {
+    width: 28px;
+    min-height: 32px;
+    background: none;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    color: #888;
+    cursor: pointer;
+}
+
+.picker-flyout-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.picker-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #4a9eff;
+    font-size: 0.7rem;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.picker-foot-hint {
+    color: #666;
+    font-size: 0.62rem;
+    text-align: right;
+}
+
+.unit-picker-title {
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #999;
+}
+
+.unit-picker-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.picker-search {
+    flex: 1;
+    min-width: 0;
+    padding: 0.4rem 0.3rem;
+    background-color: #14171a;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-size: 0.75rem;
+}
+
+.picker-search:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.picker-faction {
+    flex: 1;
+    min-width: 0;
+    padding: 0.4rem 0.3rem;
+    background-color: #14171a;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.picker-side {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.picker-side-btn {
+    padding: 0.4rem 0.6rem;
+    min-height: 32px;
+    background-color: #14171a;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    color: #888;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.picker-side-blue.active {
+    color: #4a9eff;
+    border-color: #4a9eff;
+    background-color: rgba(74, 158, 255, 0.12);
+}
+
+.picker-side-red.active {
+    color: #ff4a4a;
+    border-color: #ff4a4a;
+    background-color: rgba(255, 74, 74, 0.12);
+}
+
+.picker-results {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.picker-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+}
+
+.picker-row-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    text-align: left;
+    padding: 0.4rem 0.45rem;
+    min-height: 40px;
+    background-color: #1f1f1f;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    color: #e0e0e0;
+    cursor: pointer;
+}
+
+.picker-row-main:hover {
+    border-color: var(--accent);
+}
+
+.picker-row-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.4rem;
+}
+
+.picker-row-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.picker-row-pts {
+    font-size: 0.7rem;
+    color: var(--accent);
+    white-space: nowrap;
+}
+
+.picker-row-sub {
+    font-size: 0.66rem;
+    color: #888;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.picker-row-stats {
+    color: #aaa;
+}
+
+.picker-variant-toggle {
+    width: 28px;
+    margin-left: 0.25rem;
+    background-color: #1f1f1f;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    color: #888;
+    cursor: pointer;
+}
+
+.picker-variants {
+    flex-basis: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-top: 0.25rem;
+    padding-left: 0.75rem;
+}
+
+.picker-variant-row {
+    text-align: left;
+    padding: 0.35rem 0.45rem;
+    background-color: #14171a;
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: #ccc;
+    font-size: 0.72rem;
+    cursor: pointer;
+}
+
+.picker-variant-row:hover {
+    border-color: var(--accent);
+}
+
+.picker-recents {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.picker-chip {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0.3rem 0.5rem;
+    min-height: 30px;
+    background-color: #1f1f1f;
+    border: 1px solid #3a3a3a;
+    border-radius: 999px;
+    color: #bbb;
+    font-size: 0.7rem;
+    cursor: pointer;
+}
+
+.picker-chip:hover {
+    border-color: var(--accent);
+    color: #e0e0e0;
+}
+
+.picker-empty {
+    margin: 0;
+    color: #777;
+    font-size: 0.72rem;
+}
+
+.picker-feedback {
+    margin: 0;
+    color: var(--accent);
+    font-size: 0.7rem;
+}
+
+/* Tray variant: bigger touch targets, panel-native colors. */
+.unit-picker-tray {
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+.unit-picker-tray .picker-row-main {
+    min-height: 48px;
+    padding: 0.55rem 0.6rem;
+}
+
+.unit-picker-tray .picker-side-btn {
+    min-height: 40px;
+    padding: 0.5rem 0.9rem;
+}
+
+.unit-picker-tray .picker-search,
+.unit-picker-tray .picker-faction {
+    min-height: 40px;
+    font-size: 0.85rem;
+}
+
+.unit-picker-tray .picker-chip {
+    min-height: 36px;
+    font-size: 0.78rem;
+}
+
+.unit-picker-tray .picker-results {
+    max-height: min(46vh, 340px);
+}
+
+.picker-save-btn {
+    width: 100%;
+    padding: 0.5rem;
+    min-height: 36px;
+    background-color: rgba(var(--accent-rgb), 0.12);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    color: var(--accent);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.picker-save-btn:hover {
+    background-color: rgba(var(--accent-rgb), 0.2);
+}
+
+.import-army-savelist {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.picker-flyout .picker-results {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+}
+
+/* ── Unit info card + hover pill fixes (H 2026-08-09) ─────────────────── */
+
+/* The hover pill's SVG text was selectable - drags painted a blue
+   selection highlight over the label. */
+.base-hover-tip text,
+.base-hover-tip {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Selected base's card, pinned to the board's bottom-left. Informational
+   only - pointer-events none so it can never intercept a board click. */
+.unit-info-card {
+    /* H: over the SIDEBAR, bottom-left of the window - never on the board. */
+    position: fixed;
+    left: 12px;
+    bottom: 12px;
+    z-index: 1200;
+    width: 276px;
+    max-width: calc(100vw - 24px);
+    box-sizing: border-box;
+    padding: 0.55rem 0.7rem;
+    background-color: #1c1c1c;
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    pointer-events: none;
+    user-select: none;
+}
+
+.unit-info-name {
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.unit-info-sub {
+    color: #999;
+    font-size: 0.72rem;
+    margin-top: 2px;
+}
+
+.unit-info-stats {
+    color: #ccc;
+    font-size: 0.74rem;
+    margin-top: 4px;
+}
+
+.unit-info-pts {
+    color: var(--accent);
+    white-space: nowrap;
+}
+
+/* ── List editor (My Lists builds with the picker, H 2026-08-10) ───────── */
+
+.list-editor {
+    background-color: #191d20;
+    border: 1px solid #262b2f;
+    border-radius: 8px;
+    padding: 1.1rem 1.25rem 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+/* The editor's context line: "Edit list" / "New list" in the mono voice. */
+.list-editor-kicker {
+    margin: 0 0 0.5rem;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.66rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #7d858c;
+}
+
+.list-editor-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.9rem;
+}
+
+/* Head buttons keep their natural width - the name field takes the room. */
+.list-editor-head .list-card-btn-primary {
+    flex: 0 0 auto;
+    padding: 8px 18px;
+}
+
+/* The name field IS the rename surface: display-face, no chrome until
+   focus (H 2026-08-20: the old rename flow "omg"). */
+.list-editor-name-input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: 1px solid #2c3237;
+    border-radius: 0;
+    padding: 0.15rem 0.1rem 0.35rem;
+    font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+    font-size: 1.7rem;
+    line-height: 1.05;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #e9e4d4;
+}
+
+.list-editor-name-input:hover {
+    border-bottom-color: #3a424a;
+}
+
+.list-editor-name-input:focus {
+    outline: none;
+    border-bottom-color: var(--accent);
+}
+
+.list-editor-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+    margin: 0 0 1rem;
+}
+
+.list-editor-fact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    /* Grows on a wide row, shrinks below 200px on a phone */
+    flex: 1 1 200px;
+}
+
+.list-editor-fact > span {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.66rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #9aa1a7;
+}
+
+.list-editor-fact input,
+.list-editor-fact select {
+    background: #14171a;
+    border: 1px solid #2c3237;
+    border-radius: 4px;
+    padding: 0.4rem 0.55rem;
+    font-size: 0.8rem;
+    color: #d6d3c9;
+}
+
+.list-editor-fact input:focus,
+.list-editor-fact select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.list-editor-body {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+}
+
+.list-editor-units {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.list-editor-meta {
+    margin: 0 0 0.35rem;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #7d858c;
+}
+
+.list-editor-empty {
+    margin: 0;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    color: #666d74;
+    font-size: 0.85rem;
+    background: #14171a;
+    border: 1px dashed #2c3237;
+    border-radius: 6px;
+}
+
+.list-editor-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.65rem;
+    background-color: #14171a;
+    border: 1px solid #262b2f;
+    border-radius: 6px;
+    transition: border-color 0.15s;
+}
+
+.list-editor-row:hover {
+    border-color: #333a40;
+}
+
+.list-editor-row-name {
+    color: #d5dae0;
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.list-editor-row-pts {
+    color: var(--accent);
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.68rem;
+}
+
+/* Attachment link on a list-editor row (H 2026-08-19) */
+.list-editor-attach {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-left: 0.5rem;
+    color: var(--accent);
+    font-size: 0.72rem;
+}
+
+.list-editor-attach-clear {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 0.72rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.15rem;
+}
+
+.list-editor-attach-clear:hover {
+    color: #fff;
+}
+
+.list-editor-attach-select {
+    margin-left: 0.5rem;
+    background: transparent;
+    border: 1px solid #2c3237;
+    border-radius: 4px;
+    color: #7d858c;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.64rem;
+    padding: 0.12rem 0.2rem;
+    max-width: 9rem;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+/* The attach control only speaks when the row is under the cursor -
+   ten identical "Attach to..." selects were the noise H flagged. */
+.list-editor-row:hover .list-editor-attach-select,
+.list-editor-attach-select:focus {
+    opacity: 1;
+}
+
+.list-editor-remove {
+    padding: 0.15rem 0.45rem;
+    line-height: 1;
+}
+
+.list-editor-picker {
+    width: 320px;
+    flex-shrink: 0;
+}
+
+@media (max-width: 720px) {
+    .list-editor-body {
+        flex-direction: column;
+    }
+    .list-editor-picker {
+        width: 100%;
+    }
+}
+
+/* Save/Clone row (PRD-064 + H 2026-08-09): the sidebar's bordered button
+   treatment (dark tinted fill, 2px colored border, colored bold text) at
+   full action-button size. Green for Save, house gold for Clone. */
+.save-clone-row {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.35rem 0;
+    border-top: none;
+}
+
+.save-board-btn,
+.clone-board-btn {
+    min-width: 0;
+    padding: 0.3rem 0.5rem;
+    background-color: #2a2a2a;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.save-board-btn {
+    flex: 2;
+    background-color: rgba(var(--accent-rgb), 0.12);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+}
+
+.save-board-btn:hover:not(:disabled) {
+    background-color: rgba(var(--accent-rgb), 0.22);
+}
+
+.clone-board-btn {
+    flex: 1;
+    background-color: rgba(var(--accent-rgb), 0.12);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+}
+
+.clone-board-btn:hover:not(:disabled) {
+    background-color: rgba(var(--accent-rgb), 0.22);
+}
+
+.save-board-btn:disabled,
+.clone-board-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ── Exposure overlay toolbar controls (PRD-065 phase 2) ── */
+.toolbar-exposure-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Playbook planning page (PRD-066): the board owns the screen. The
+   plan is a timeline dock at the bottom (Deployment → turns 1-5, play
+   button); quiet tools float in the corners; a slim units tray sits left. ── */
+.planning-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  max-width: 100vw;
+  background-color: #1a1c20;
+}
+
+.planning-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.planning-tray {
+  width: 260px;
+  background-color: #191d20;
+  padding: 1rem;
+  overflow-y: auto;
+  border-right: 1px solid #262b2f;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.planning-tray-footer {
+  margin-top: auto;
+  padding-top: 0.75rem;
+}
+
+/* Row 2 of the timeline dock: the action buttons (H 2026-08-19) */
+.planning-dock-actions {
+  margin-top: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Styled confirm dialog — the native browser dialog is banned in planning */
+.planning-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 13, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.planning-confirm {
+  background: #191d20;
+  border: 1px solid #262b2f;
+  border-radius: 10px;
+  padding: 18px 20px;
+  max-width: 420px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.planning-confirm-message {
+  color: #e9e4d4;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  margin: 0 0 14px;
+}
+
+.planning-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Exit lives with Update plan / Clone (H 2026-08-19) */
+.planning-exit-btn {
+  width: 100%;
+  margin-top: 8px;
+  justify-content: center;
+}
+
+/* Drop-order roster (H 2026-08-19): draggable list in the planning tray.
+   H saw and rejected an overlay-drawer variant same day - the tray is
+   the decided home. */
+.drop-order-panel {
+  background: #191d20;
+  border: 1px solid #262b2f;
+  border-radius: 8px;
+  padding: 10px 10px 12px;
+  margin-bottom: 12px;
+}
+
+.drop-order-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a9199;
+  margin-bottom: 8px;
+}
+
+.drop-order-title-pool {
+  margin-top: 12px;
+}
+
+.drop-order-empty {
+  font-size: 0.78rem;
+  color: #8a9199;
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+
+.drop-order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.drop-order-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #22262a;
+  border: 1px solid #2c3237;
+  border-radius: 6px;
+  padding: 5px 8px;
+  cursor: grab;
+  user-select: none;
+}
+
+.drop-order-row:hover {
+  border-color: var(--accent, #e2a63d);
+}
+
+.drop-order-row-over {
+  outline: 2px solid var(--accent, #e2a63d);
+  outline-offset: -1px;
+}
+
+.drop-order-tail {
+  height: 14px;
+  border-radius: 6px;
+}
+
+.drop-order-num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ffce6b;
+  min-width: 18px;
+  text-align: center;
+}
+
+.drop-order-name {
+  flex: 1;
+  font-size: 0.78rem;
+  color: #e9e4d4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drop-order-count {
+  color: #8a9199;
+}
+
+.drop-order-remove,
+.drop-order-add {
+  background: none;
+  border: 1px solid #3a4147;
+  border-radius: 4px;
+  color: #8a9199;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.drop-order-remove:hover {
+  border-color: #e06c5a;
+  color: #e06c5a;
+}
+
+.drop-order-add:hover {
+  border-color: var(--accent, #e2a63d);
+  color: var(--accent, #e2a63d);
+}
+
+.planning-corner {
+  position: absolute;
+  top: 0.7rem;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.planning-corner-left {
+  left: 0.85rem;
+}
+
+/* Corner tools are icon-only; tooltips carry the names (H 2026-08-19) */
+.planning-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.3rem 0.45rem;
+    line-height: 1;
+}
+
+/* Planning top bar (H 2026-08-19): Exit | the battlefield toolbar | Delete
+   plan. In flow, so nothing overlaps the sideboard. */
+.planning-topbar {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.planning-topbar > .toolbar {
+    flex: 1;
+    min-width: 0;
+}
+
+/* One INLINE row (H 2026-08-19): buttons are icon-only with mouseover
+   labels; the BASE OPTIONS / MAP OPTIONS titles STAY for distinction
+   (H ruling after seeing them gone). */
+
+.planning-topbar > .toolbar-btn {
+    flex-shrink: 0;
+    min-height: 44px;
+}
+
+.planning-corner-right {
+  right: 0.85rem;
+}
+
+.planning-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-left: 0.35rem;
+  user-select: none;
+}
+
+/* The selection toolbar floats over the board — the page never reflows */
+.planning-context-bar {
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 56;
+  max-width: calc(100% - 22rem);
+}
+
+.planning-context-bar .toolbar {
+  margin-bottom: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* ── The timeline dock ── */
+/* Horizontal bottom dock (H 2026-08-20: vertical rail tried and REJECTED
+   on sight - keep it horizontal). Still draggable. */
+.planning-dock-wrap {
+  user-select: none;
+  -webkit-user-select: none;
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 55;
+  cursor: grab;
+  touch-action: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  max-width: calc(100% - 2rem);
+}
+
+.planning-dock {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background-color: rgba(24, 26, 31, 0.94);
+  border: 2px solid #3a3a3a;
+  border-radius: 12px;
+  padding: 0.5rem 0.8rem;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.planning-play {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background-color: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent);
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.planning-play:hover {
+  background-color: rgba(var(--accent-rgb), 0.25);
+  transform: scale(1.05);
+}
+
+.planning-node {
+  min-width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 2px solid #3a3a3a;
+  background-color: #2a2a2a;
+  color: #b5b5b5;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.planning-node-deploy {
+  padding: 0 0.85rem;
+}
+
+.planning-node:hover {
+  border-color: #555;
+  color: #e0e0e0;
+}
+
+.planning-node.active {
+  border-color: var(--accent);
+  background-color: rgba(var(--accent-rgb), 0.16);
+  color: var(--accent);
+}
+
+.planning-connector {
+  width: 10px;
+  height: 2px;
+  background-color: #3a3a3a;
+  flex-shrink: 0;
+}
+
+.planning-divider {
+  width: 1px;
+  height: 24px;
+  background-color: #3a3a3a;
+  margin: 0 0.35rem;
+  flex-shrink: 0;
+}
+
+.planning-label {
+  font-size: 0.7rem;
+  color: #999;
+  flex-shrink: 0;
+}
+
+.planning-counter {
+  font-size: 0.75rem;
+  color: #e0e0e0;
+  min-width: 34px;
+  text-align: center;
+}
+
+.planning-branch-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: rgba(24, 26, 31, 0.94);
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  padding: 0.28rem 0.55rem;
+}
+
+.planning-caption {
+  font-size: 0.72rem;
+  font-style: italic;
+  color: #9a9a9a;
+  background-color: rgba(20, 22, 26, 0.85);
+  border: 1px solid #2e2e2e;
+  border-radius: 999px;
+  padding: 0.22rem 0.75rem;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* Dock buttons get their tooltips above, not below (the dock hugs the
+   bottom edge — a below-tooltip would clip) */
+.planning-dock [data-tip]:hover::after,
+.planning-branch-row [data-tip]:hover::after,
+.planning-dock-wrap [data-tip]:hover::after {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
+.planning-dock [data-tip],
+.planning-branch-row [data-tip] {
+  position: relative;
+}
+
+.planning-dock [data-tip]:hover::after,
+.planning-branch-row [data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #1c1c1c;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 0.28rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #e0e0e0;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 300;
+}
+
+/* Corner buttons: tooltips below-left-safe (default toolbar tip works,
+   but corner-right tips must not clip off-screen) */
+.planning-corner [data-tip] {
+  position: relative;
+}
+
+.planning-corner [data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #1c1c1c;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 0.28rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #e0e0e0;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 300;
+}
+
+.planning-corner-right [data-tip]:hover::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+/* The sidebar launcher: the one way into the planning page. Bordered
+   action style (PRD-062 idiom: dark tinted fill, 2px accent border). */
+.playbook-launch-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.35rem 0.6rem;
+  margin-bottom: 0.4rem;
+  background-color: rgba(var(--accent-rgb), 0.08);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.playbook-launch-btn:hover {
+  background-color: rgba(var(--accent-rgb), 0.18);
+  transform: translateY(-1px);
+}
+
+/* /playbook with no plan: the page's own landing state */
+.playbook-landing {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  background-color: #1a1c20;
+  padding: 2rem;
+  text-align: center;
+}
+
+.playbook-landing h2 {
+  font-size: 1.4rem;
+  color: #fff;
+}
+
+.playbook-landing p {
+  color: #999;
+  max-width: 420px;
+}
+
+.playbook-landing .playbook-launch-btn {
+  width: auto;
+  padding: 0.7rem 1.4rem;
+  margin-bottom: 0;
+}
+
+/* =====================================================================
+   Polish pass 2026-08-20 (H: "POLISHED, NON-AI UI"). Shared pieces for
+   the list pages, the share modal, and the shared-board banner.
+   ===================================================================== */
+
+/* Inline rename input on list cards - one styled class, no inline styles. */
+.list-card-rename-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    background: #14171a;
+    border: 1px solid #333a40;
+    border-radius: 6px;
+    color: #e9e4d4;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.list-card-rename-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* Search on the list pages (My Boards / My Plans / My Lists). */
+.list-page-search {
+    width: 220px;
+    max-width: 100%;
+    padding: 8px 12px;
+    background: #14171a;
+    border: 1px solid #2c3237;
+    border-radius: 6px;
+    color: #d5dae0;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+}
+
+.list-page-search::placeholder {
+    color: #5c636a;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.list-page-search:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* Share modal (boards / plans / layouts) - the one link surface. */
+.share-modal h2 {
+    text-align: left;
+    margin-bottom: 0.15rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.share-modal-sub {
+    margin: 0 0 1.25rem;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #7d858c;
+    text-align: left;
+}
+
+.share-modal-copy {
+    margin: 0 0 1.25rem;
+    color: #9aa1a7;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    text-align: left;
+}
+
+.share-modal-error {
+    margin: 0 0 1rem;
+    padding: 0.6rem 0.75rem;
+    background: rgba(204, 68, 68, 0.08);
+    border: 1px solid rgba(204, 68, 68, 0.4);
+    border-radius: 6px;
+    color: #d98c8c;
+    font-size: 0.85rem;
+    text-align: left;
+}
+
+.share-modal-link-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.share-modal-link-input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.6rem 0.7rem;
+    background: #14171a;
+    border: 1px solid #333a40;
+    border-radius: 6px;
+    color: #d5dae0;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.74rem;
+}
+
+.share-modal-link-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.modal-btn-primary {
+    padding: 0.6rem 1.2rem;
+    background: rgba(var(--accent-rgb), 0.1);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    color: var(--accent);
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+.modal-btn-primary:hover:not(:disabled) {
+    background: rgba(var(--accent-rgb), 0.22);
+}
+
+.modal-btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.modal-btn-primary-wide {
+    width: 100%;
+}
+
+.share-modal-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.modal-btn-quiet {
+    padding: 0.5rem 0.9rem;
+    background: transparent;
+    border: 1px solid #333a40;
+    border-radius: 6px;
+    color: #9aa1a7;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.modal-btn-quiet:hover:not(:disabled) {
+    border-color: #4a5157;
+    color: #d5dae0;
+}
+
+.modal-btn-revoke {
+    border-color: #3d3236;
+    color: #cc5555;
+}
+
+.modal-btn-revoke:hover:not(:disabled) {
+    border-color: #cc4444;
+    color: #e07070;
+    background: rgba(204, 68, 68, 0.1);
+}
+
+/* Destructive confirm - the one loud red in a modal. */
+.modal-btn-danger {
+    background: rgba(204, 68, 68, 0.12);
+    border-color: #cc4444;
+    color: #e07070;
+    font-weight: 700;
+}
+
+.modal-btn-danger:hover:not(:disabled) {
+    background: rgba(204, 68, 68, 0.22);
+    border-color: #e05555;
+    color: #f08585;
+}
+
+/* Shared-board viewer banner (read-only links out in the wild). */
+.shared-banner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 0.45rem 1rem;
+    background: #191d20;
+    border-bottom: 1px solid rgba(var(--accent-rgb), 0.55);
+    color: #d5dae0;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+}
+
+.shared-banner strong {
+    color: #e9e4d4;
+    font-weight: 600;
+}
+
+.shared-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.shared-banner-cta {
+    padding: 0.3rem 0.7rem;
+    background: rgba(var(--accent-rgb), 0.1);
+    border: 1px solid var(--accent);
+    border-radius: 5px;
+    color: var(--accent);
+    font-family: inherit;
+    font-size: 0.64rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.shared-banner-cta:hover {
+    background: rgba(var(--accent-rgb), 0.22);
+}
+
+.shared-banner-dismiss {
+    background: none;
+    border: none;
+    color: #7d858c;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 4px;
+}
+
+.shared-banner-dismiss:hover {
+    color: #d5dae0;
+}
+
+.shared-save-area {
+    padding: 1rem;
+    border-top: 1px solid #262b2f;
+}
+
+.shared-save-btn {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    background: rgba(var(--accent-rgb), 0.1);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    color: var(--accent);
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.shared-save-btn:hover:not(:disabled) {
+    background: rgba(var(--accent-rgb), 0.22);
+}
+
+.shared-save-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PHONE PARITY (2026-08-20)
+   The planning page, the list pages and the modals were desktop-only in
+   their sizing. These blocks make them usable at 390px. The desktop look
+   does not change.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── The planning page (Playbook) ── */
+/* The page fits the screen exactly (H 2026-08-20). #root grows freely on a
+   phone, so the planning page ran off the bottom and the dock's action row
+   sat under the iOS browser toolbar. --app-vh is the visible height, published
+   by useViewportHeight while this page is mounted. */
+@media (max-width: 900px) {
+    body.planning-page #root {
+        height: var(--app-vh, 100dvh);
+        min-height: 0;
+        overflow: hidden;
+    }
+}
+
+/* Portrait only: the tray stacks above the board. In landscape the screen is
+   short, so the tray keeps the side column and the board keeps the height. */
+@media (max-width: 900px) and (orientation: portrait) {
+    .planning-body {
+        flex-direction: column;
+    }
+
+    /* A share of the box, not of the screen: the top bar and the browser
+       chrome are already gone from --app-vh, so 40vh took too much. */
+    .planning-tray {
+        width: 100%;
+        max-height: 45%;
+        overflow-y: auto;
+        border-right: none;
+        border-bottom: 1px solid #262b2f;
+    }
+
+    .planning-tray-footer {
+        margin-top: 0.75rem;
+    }
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+    /* A narrow side column: the board still gets most of the width */
+    .planning-tray {
+        width: 200px;
+        padding: 0.6rem;
+    }
+}
+
+@media (max-width: 900px) {
+    .planning-topbar {
+        flex-wrap: wrap;
+    }
+
+    /* The floating selection toolbar: the desktop rule keeps 22rem clear
+       for the tray, which goes negative at phone width. */
+    .planning-context-bar {
+        max-width: calc(100% - 1rem);
+    }
+
+    /* The timeline dock stays on the screen and stays short: smaller nodes,
+       tighter gaps. It wraps, so a tooltip is never clipped.
+       left:50% + translateX gives an absolute box only half the width to
+       shrink-wrap into, which forces extra rows. Both edges instead. */
+    .planning-dock-wrap {
+        bottom: calc(0.6rem + env(safe-area-inset-bottom));
+        left: 0.5rem;
+        right: 0.5rem;
+        transform: none;
+        max-width: none;
+    }
+
+    .planning-dock {
+        gap: 4px;
+        padding: 0.4rem 0.5rem;
+        max-width: 100%;
+    }
+
+    .planning-play {
+        width: 32px;
+        height: 32px;
+    }
+
+    .planning-node {
+        min-width: 32px;
+        height: 32px;
+        font-size: 0.75rem;
+    }
+
+    .planning-node-deploy {
+        padding: 0 0.5rem;
+    }
+
+    .planning-connector {
+        width: 6px;
+    }
+
+    .planning-divider {
+        margin: 0 0.2rem;
+    }
+}
+
+/* ── Touch: hover never happens, so the icon labels need a press state ──
+   The tip shows while the finger is down. Every one of these buttons also
+   carries an aria-label for the screen reader. */
+@media (hover: none) {
+    .toolbar [data-tip]:active::after,
+    .planning-corner [data-tip]:active::after {
+        content: attr(data-tip);
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #1c1c1c;
+        border: 1px solid var(--accent);
+        border-radius: 4px;
+        padding: 0.28rem 0.6rem;
+        font-size: 0.72rem;
+        font-weight: 500;
+        color: #e0e0e0;
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 300;
+    }
+
+    .planning-corner-right [data-tip]:active::after {
+        left: auto;
+        right: 0;
+        transform: none;
+    }
+
+    /* Dock tips go above — the dock hugs the bottom edge */
+    .planning-dock [data-tip]:active::after,
+    .planning-branch-row [data-tip]:active::after {
+        content: attr(data-tip);
+        position: absolute;
+        left: 50%;
+        top: auto;
+        bottom: calc(100% + 8px);
+        transform: translateX(-50%);
+        background-color: #1c1c1c;
+        border: 1px solid var(--accent);
+        border-radius: 4px;
+        padding: 0.28rem 0.6rem;
+        font-size: 0.72rem;
+        font-weight: 500;
+        color: #e0e0e0;
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 300;
+    }
+
+    /* Hover-reveal controls have no reveal on a touch screen: show them */
+    .list-editor-attach-select {
+        opacity: 1;
+    }
+}
+
+/* ── The list editor at phone width ── */
+@media (max-width: 600px) {
+    .list-editor-head {
+        flex-wrap: wrap;
+    }
+
+    .list-editor-name-input {
+        flex: 1 1 100%;
+        font-size: 1.25rem;
+    }
+
+    /* The header actions become one full-width block of buttons */
+    .list-page-header-actions {
+        width: 100%;
+    }
+
+    .list-page-search {
+        width: 100%;
+    }
+
+    .list-page-header-actions > button {
+        flex: 1 1 auto;
+    }
+}
+
+/* ── The import preview table scrolls sideways instead of pushing the
+      modal wider (CSS only: the table has no wrapper element) ── */
+@media (max-width: 600px) {
+    .import-preview-table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .import-preview-table th,
+    .import-preview-table td {
+        padding: 0.35rem 0.45rem;
+    }
+
+    .import-preview-table td:nth-child(2),
+    .import-preview-table td:nth-child(3) {
+        white-space: normal;
+    }
+}
+
+/* ── The unit picker flyout has a desktop sidebar offset built in ── */
+@media (max-width: 900px) {
+    .picker-flyout {
+        left: 8px;
+        right: 8px;
+        width: auto;
+    }
+}
+
+/* ── Modals keep a margin at the smallest widths ── */
+@media (max-width: 480px) {
+    .modal-content {
+        padding: 1.25rem;
+        width: 94%;
+    }
+}
+
+/* ── The subscribe banner stacks under the header bar on a small screen ── */
+@media (max-width: 768px) {
+    .header {
+        flex-wrap: wrap;
+    }
+
+    .header-subscribe-banner {
+        order: 3;
+        flex: 1 0 100%;
+        margin: 0.5rem 0 0 !important;
+    }
+}
+
+/* ── The shared-board banner wraps instead of covering the board top ── */
+@media (max-width: 600px) {
+    .shared-banner {
+        position: static;
+        gap: 0.4rem;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.64rem;
+        text-align: center;
+    }
+}
