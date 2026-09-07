@@ -147,6 +147,14 @@
       }
     }
     </script>
+    <!-- GH Pages subpath basename for the SPA router ('' on localhost/custom-domain) -->
+    <script>
+      (function () {
+        var repo = '/warhammer-simulator';
+        var p = window.location.pathname;
+        window.__APP_BASENAME = (p === repo || p.indexOf(repo + '/') === 0) ? repo : '';
+      })();
+    </script>
     <script type="module" crossorigin src="assets/main-DG1ErbsX.js"></script>
     <link rel="stylesheet" crossorigin href="assets/main-Cf85tsAR.css">
   </head>
