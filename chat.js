@@ -114,16 +114,15 @@
   /* ============================================================
    *  ui
    * ============================================================ */
-  var panel, toggle, messagesEl, nameInput, textInput, roomLabel;
+  var panel, messagesEl, nameInput, textInput, roomLabel;
 
   function buildUI() {
     var css = el("style");
     css.textContent = [
-      "#ws-chat-panel{position:fixed;left:14px;bottom:14px;z-index:99998;width:300px;background:#1a1a2e;color:#eee;border:1px solid #333;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;box-shadow:0 8px 28px rgba(0,0,0,.5);display:none;flex-direction:column;overflow:hidden}",
+      "#ws-chat-panel{position:fixed;left:14px;bottom:14px;z-index:99998;width:300px;background:#1a1a2e;color:#eee;border:1px solid #333;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;box-shadow:0 8px 28px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden}",
       "#ws-chat-header{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#12121f;border-bottom:1px solid #333}",
       "#ws-chat-title{font-weight:700;color:#ffb74d}",
       "#ws-chat-room{color:#888;font-size:10px;margin-left:6px}",
-      "#ws-chat-close{background:none;border:0;color:#888;cursor:pointer;font-size:14px;padding:0 2px}",
       "#ws-chat-name-row{display:flex;gap:6px;padding:6px 10px;border-bottom:1px solid #2a2a3a;align-items:center}",
       "#ws-chat-name-row label{color:#888;font-size:10px;white-space:nowrap}",
       "#ws-chat-name-row input{flex:1;background:#12121f;border:1px solid #333;border-radius:6px;color:#eee;padding:4px 8px;font-size:11px;font-family:inherit;min-width:0}",
@@ -136,20 +135,11 @@
       ".ws-msg-body{color:#ddd;word-break:break-word;white-space:pre-wrap}",
       "#ws-chat-input-row{display:flex;gap:6px;padding:8px 10px;border-top:1px solid #2a2a3a}",
       "#ws-chat-input-row input{flex:1;background:#12121f;border:1px solid #333;border-radius:6px;color:#eee;padding:6px 8px;font-size:12px;font-family:inherit;min-width:0}",
-      "#ws-chat-send{background:#ff9800;border:0;color:#111;border-radius:6px;padding:0 12px;font-weight:700;cursor:pointer}",
-      "#ws-chat-toggle{position:fixed;left:14px;bottom:14px;z-index:99999;width:46px;height:46px;border-radius:50%;border:0;cursor:pointer;background:#ff9800;color:#111;font-size:20px;box-shadow:0 6px 18px rgba(0,0,0,.45);display:block}"
+      "#ws-chat-send{background:#ff9800;border:0;color:#111;border-radius:6px;padding:0 12px;font-weight:700;cursor:pointer}"
     ].join("\n");
     document.head.appendChild(css);
 
-    // Collapsed toggle bubble
-    toggle = el("button");
-    toggle.id = "ws-chat-toggle";
-    toggle.textContent = "💬";
-    toggle.title = "Open chat";
-    toggle.onclick = function () { showPanel(); };
-    document.body.appendChild(toggle);
-
-    // Panel
+    // Panel (always visible — no toggle button)
     panel = el("div");
     panel.id = "ws-chat-panel";
 
@@ -162,16 +152,10 @@
     roomLabel = el("span");
     roomLabel.id = "ws-chat-room";
 
-    var closeBtn = el("button");
-    closeBtn.id = "ws-chat-close";
-    closeBtn.textContent = "✕";
-    closeBtn.onclick = function () { hidePanel(); };
-
     var left = el("div");
     left.appendChild(titleSpan);
     left.appendChild(roomLabel);
     header.appendChild(left);
-    header.appendChild(closeBtn);
     panel.appendChild(header);
 
     // Name row
@@ -251,16 +235,6 @@
 
   function setRoomLabel(r) {
     roomLabel.textContent = "· " + r;
-  }
-
-  function showPanel() {
-    panel.style.display = "flex";
-    toggle.style.display = "none";
-    if (room) textInput.focus();
-  }
-  function hidePanel() {
-    panel.style.display = "none";
-    toggle.style.display = "block";
   }
 
   /* ============================================================

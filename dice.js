@@ -20,7 +20,7 @@
   }
 
   /* ---------- state ---------- */
-  var panel, toggle, countInput, resultsEl;
+  var panel, countInput, resultsEl;
 
   function roll(n) {
     var counts = [0, 0, 0, 0, 0, 0, 0];
@@ -82,11 +82,9 @@
   function buildUI() {
     var css = el('style');
     css.textContent = [
-      "#ws-dice-toggle{position:fixed;right:14px;top:76px;z-index:99999;width:46px;height:46px;border-radius:50%;border:0;cursor:pointer;background:#ff9800;color:#111;font-size:20px;box-shadow:0 6px 18px rgba(0,0,0,.45);display:block}",
-      "#ws-dice-panel{position:fixed;right:14px;top:76px;z-index:99998;width:250px;background:#1a1a2e;color:#eee;border:1px solid #333;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;box-shadow:0 8px 28px rgba(0,0,0,.5);display:none;flex-direction:column;overflow:hidden}",
+      "#ws-dice-panel{position:fixed;right:14px;top:76px;z-index:99998;width:250px;background:#1a1a2e;color:#eee;border:1px solid #333;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;box-shadow:0 8px 28px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden}",
       "#ws-dice-header{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#12121f;border-bottom:1px solid #333}",
       "#ws-dice-title{font-weight:700;color:#ffb74d}",
-      "#ws-dice-close{background:none;border:0;color:#888;cursor:pointer;font-size:14px;padding:0 2px}",
       "#ws-dice-count-row{display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid #2a2a3a}",
       "#ws-dice-count-row label{color:#888;font-size:10px;white-space:nowrap}",
       ".ws-dice-btn{background:#12121f;border:1px solid #333;color:#eee;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:14px;line-height:1}",
@@ -96,8 +94,8 @@
       ".ws-dice-preset:hover{background:#1e1e33}",
       "#ws-dice-roll{background:#ff9800;border:0;color:#111;border-radius:6px;padding:8px;margin:8px 10px;font-weight:700;cursor:pointer;font-size:13px}",
       "#ws-dice-results{padding:2px 10px 10px;display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto}",
-      ".ws-dice-faces{display:flex;flex-wrap:wrap;gap:2px;font-size:16px;line-height:1.2;color:#ffd54f}",
-      ".ws-dice-face{min-width:14px;text-align:center}",
+      ".ws-dice-faces{display:flex;flex-wrap:wrap;gap:5px;font-size:48px;line-height:1.15;color:#ffd54f}",
+      ".ws-dice-face{min-width:40px;text-align:center}",
       ".ws-dice-table{display:flex;flex-direction:column;gap:2px}",
       ".ws-dice-row{display:flex;justify-content:space-between;padding:2px 8px;border-radius:6px;background:#12121f}",
       ".ws-dice-row.crit{background:#2a1a12;border:1px solid #ff9800}",
@@ -108,13 +106,6 @@
     ].join("\n");
     document.head.appendChild(css);
 
-    toggle = el('button');
-    toggle.id = 'ws-dice-toggle';
-    toggle.textContent = '🎲';
-    toggle.title = 'Dice roller';
-    toggle.onclick = function () { show(); };
-    document.body.appendChild(toggle);
-
     panel = el('div');
     panel.id = 'ws-dice-panel';
 
@@ -124,12 +115,7 @@
     var title = el('span');
     title.id = 'ws-dice-title';
     title.textContent = '🎲 DICE';
-    var closeBtn = el('button');
-    closeBtn.id = 'ws-dice-close';
-    closeBtn.textContent = '✕';
-    closeBtn.onclick = function () { hide(); };
     header.appendChild(title);
-    header.appendChild(closeBtn);
     panel.appendChild(header);
 
     // count row (+/-)
@@ -173,17 +159,6 @@
     panel.appendChild(resultsEl);
 
     document.body.appendChild(panel);
-  }
-
-  function show() {
-    panel.style.display = 'flex';
-    toggle.style.display = 'none';
-    countInput.focus();
-    countInput.select();
-  }
-  function hide() {
-    panel.style.display = 'none';
-    toggle.style.display = 'block';
   }
 
   function boot() {
