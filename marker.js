@@ -14,6 +14,11 @@
 
   var MARKER_FLAG = 'isDeployMarker';
   var COLORS = ['#ff9800', '#4a9eff', '#ff4a4a', '#4aff88', '#ffd54f', '#b388ff'];
+  var SIZES = [
+    { label: 'S', mm: 32 },
+    { label: 'M', mm: 40 },
+    { label: 'L', mm: 60 }
+  ];
 
   /* board constants (must match the app bundle: Mi=20 px/unit, board 60x44) */
   var MI = 20;
@@ -57,7 +62,8 @@
   /* ---------- state ---------- */
   var placeMode = false;
   var currentColor = COLORS[0];
-  var panel, toggle, labelInput, placeBtn, colorRow, listEl;
+  var currentSize = 60;
+  var panel, toggle, labelInput, placeBtn, colorRow, sizeRow, listEl;
 
   function addMarkerAt(cx, cy) {
     var p = screenToBoard(cx, cy);
@@ -65,7 +71,7 @@
     var label = labelInput.value.trim() || 'Marker';
     store().getState().addBase({
       type: 'circle',
-      size: '60',
+      size: String(currentSize),
       x: p.x,
       y: p.y,
       color: currentColor,
@@ -143,6 +149,10 @@
       "#ws-mk-color-row label{color:#888;font-size:10px;white-space:nowrap}",
       ".ws-mk-swatch{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;padding:0}",
       ".ws-mk-swatch.sel{border-color:#fff}",
+      "#ws-mk-size-row{display:flex;gap:6px;padding:0 10px 8px;align-items:center}",
+      "#ws-mk-size-row label{color:#888;font-size:10px;white-space:nowrap}",
+      ".ws-mk-size{flex:1;background:#12121f;border:1px solid #333;color:#ccc;border-radius:6px;padding:4px 0;cursor:pointer;font-size:11px}",
+      ".ws-mk-size.sel{background:#ff9800;color:#111;border-color:#ff9800;font-weight:700}",
       "#ws-mk-place{margin:0 10px 10px;background:#ff9800;border:0;color:#111;border-radius:6px;padding:8px;font-weight:700;cursor:pointer;font-size:12px}",
       "#ws-mk-list{padding:0 10px 10px;display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto;border-top:1px solid #2a2a3a;padding-top:8px}",
       ".ws-mk-item{display:flex;align-items:center;gap:8px;background:#12121f;border-radius:6px;padding:5px 8px}",
@@ -204,6 +214,23 @@
       colorRow.appendChild(sw);
     });
     panel.appendChild(colorRow);
+
+    sizeRow = el('div');
+    sizeRow.id = 'ws-mk-size-row';
+    sizeRow.appendChild(el('label', null, 'Size'));
+    SIZES.forEach(function (s) {
+      var b = el('button', 'ws-mk-size');
+      b.textContent = s.label + ' ' + s.mm;
+      b.title = s.mm + 'mm';
+      if (s.mm === currentSize) b.classList.add('sel');
+      b.onclick = function () {
+        currentSize = s.mm;
+        sizeRow.querySelectorAll('.ws-mk-size').forEach(function (x) { x.classList.remove('sel'); });
+        b.classList.add('sel');
+      };
+      sizeRow.appendChild(b);
+    });
+    panel.appendChild(sizeRow);
 
     placeBtn = el('button');
     placeBtn.id = 'ws-mk-place';
