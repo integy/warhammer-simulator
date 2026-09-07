@@ -1,0 +1,1 @@
+import{r as s,o}from"./main-DG1ErbsX.js";function g(){const[e,l]=s.useState(()=>o.get11eLayouts()),[n,i]=s.useState(!1);return s.useEffect(()=>{if(e.length)return;let a=!1,t,c=0;const r=()=>{if(a)return;const u=o.get11eLayouts();u.length?l(u):c++<120?t=setTimeout(r,50):i(!0)};return r(),()=>{a=!0,t&&clearTimeout(t)}},[e.length]),{layouts:e,ready:e.length>0||n}}export{g as u};
