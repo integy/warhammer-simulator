@@ -157,6 +157,9 @@
     </script>
     <script type="module" crossorigin src="assets/main-DG1ErbsX.js"></script>
     <link rel="stylesheet" crossorigin href="assets/main-Cf85tsAR.css">
+    <!-- Firebase Realtime Database (compat SDK) for cross-device board sync -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js" defer></script>
   </head>
   <body>
     <!-- SEO: Static, crawler-visible HOMEPAGE content (visually hidden for layout).
@@ -192,5 +195,7 @@
     <script src="terrain-data-11e.js" defer></script>
     <script src="measurements-11e.js" defer></script>
     <script src="deployment-data.js" defer></script>
+    <!-- Board sync engine (runs after main bundle + data files) -->
+    <script type="module" src="sync.js"></script>
   </body>
 </html>
