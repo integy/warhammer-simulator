@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <base href="/warhammer-simulator/">
+    <meta charset="UTF-8" />
+    <!-- viewport-fit=cover enables env(safe-area-inset-*) for Battle Mode (PRD-020); no visual effect elsewhere -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- Primary Meta Tags -->
+    <title>Warhammer Simulator - Tabletop Wargame Tools & Calculators</title>
+    <meta name="title" content="Warhammer Simulator - Tabletop Wargame Tools & Calculators" />
+    <meta name="description" content="Free tabletop wargaming utility. Test deployment, calculate Line of Sight (LOS), measure distances, and plan terrain for Warhammer 40k." />
+    
+    <!-- Enhanced Meta Tags -->
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <!-- Canonical URL - static fallback, updated by script immediately -->
+    <link rel="canonical" href="https://warhammersimulator.com/" id="canonical-link" />
+    <script>
+      // Update canonical URL immediately - runs synchronously during HTML parsing
+      (function() {
+        var baseUrl = 'https://warhammersimulator.com';
+        var pathname = window.location.pathname;
+        pathname = pathname === '/' ? '/' : pathname.replace(/\/$/, '');
+        
+        var canonicalMap = {
+          '/': baseUrl + '/',
+          '/changelog': baseUrl + '/changelog',
+          '/giveaways': baseUrl + '/giveaways',
+          '/privacy-policy': baseUrl + '/privacy-policy',
+          '/terms-of-service': baseUrl + '/terms-of-service',
+          '/what-is-warhammer-simulator': baseUrl + '/what-is-warhammer-simulator'
+        };
+
+        // Legacy /reference URLs redirect to /40k-layout-reference - canonical there, not home.
+        var legacy = pathname.match(/^\/reference(\/[a-z]{4}[a-c])?$/);
+        if (legacy) pathname = '/40k-layout-reference' + (legacy[1] || '');
+
+        // Reference gallery + per-layout pages are self-canonical (each is its own
+        // indexable page). Slug = 2+2 disposition codes + a/b/c variant, e.g. /40k-layout-reference/pftha.
+        var isReference = /^\/40k-layout-reference(\/[a-z]{4}[a-c])?$/.test(pathname);
+        var canonicalUrl = canonicalMap[pathname] || (isReference ? baseUrl + pathname : baseUrl + '/');
+        
+        // Update the canonical link immediately (script runs right after the link tag)
+        try {
+          var link = document.getElementById('canonical-link');
+          if (link) {
+            link.href = canonicalUrl;
+            link.setAttribute('href', canonicalUrl);
+          }
+        } catch(e) {}
+      })();
+    </script>
+    <meta name="author" content="Warhammer Simulator" />
+    <meta name="language" content="English" />
+    <meta name="rating" content="general" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://warhammersimulator.com/" />
+    <meta property="og:title" content="Warhammer Simulator - Tabletop Wargame Tools & Calculators" />
+    <meta property="og:description" content="Free tabletop wargaming utility. Test deployment, calculate Line of Sight (LOS), measure distances, and plan terrain for Warhammer 40k." />
+    <meta property="og:site_name" content="Warhammer Simulator" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content="https://warhammersimulator.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Warhammer Simulator - Tabletop Wargame Tools" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://warhammersimulator.com/" />
+    <meta name="twitter:title" content="Warhammer Simulator - Tabletop Wargame Tools & Calculators" />
+    <meta name="twitter:description" content="Free tabletop wargaming utility. Test deployment, calculate Line of Sight (LOS), measure distances, and plan terrain for Warhammer 40k." />
+    <meta name="twitter:image" content="https://warhammersimulator.com/og.png" />
+    <meta name="twitter:image:alt" content="Warhammer Simulator - Tabletop Wargame Tools" />
+    
+    <!-- LinkedIn -->
+    <meta property="og:image:secure_url" content="https://warhammersimulator.com/og.png" />
+    
+    <!-- Reddit -->
+    <meta name="reddit:image" content="https://warhammersimulator.com/og.png" />
+    
+    <!-- Additional Meta Tags -->
+    <meta name="theme-color" content="#1a1a1a" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+    <link rel="apple-touch-icon" href="icon-512.png" />
+    <link rel="manifest" href="manifest.json" />
+    <!-- Header type matches the landing page (display + mono faces). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=20260823" />
+    
+    <!-- Performance & Resource Hints -->
+    <link rel="preconnect" href="https://www.googletagmanager.com" />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+    
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GT2SBL0CHD"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        gtag('set', { traffic_type: 'internal' });
+      }
+      gtag('config', 'G-GT2SBL0CHD');
+    </script>
+    
+    <!-- Reddit Pixel -->
+    <script>
+    !function(w,d){if(!w.rdt){var p=w.rdt=function(){p.sendEvent?p.sendEvent.apply(p,arguments):p.callQueue.push(arguments)};p.callQueue=[];var t=d.createElement("script");t.src="https://www.redditstatic.com/ads/pixel.js?pixel_id=a2_i19m95uw3adn",t.async=!0;var s=d.getElementsByTagName("script")[0];s.parentNode.insertBefore(t,s)}}(window,document);rdt('init','a2_i19m95uw3adn');rdt('track', 'PageVisit');
+    </script>
+    <!-- DO NOT MODIFY UNLESS TO REPLACE A USER IDENTIFIER -->
+    <!-- End Reddit Pixel -->
+
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Warhammer Simulator",
+      "url": "https://warhammersimulator.com/",
+      "description": "Free tabletop wargaming utility. Test deployment, calculate Line of Sight (LOS), measure distances, and plan terrain for Warhammer 40k.",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript. Optimized for Chrome, Firefox, Safari.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Deployment Testing",
+        "Line of Sight (LOS) Calculator",
+        "Base Size Management",
+        "Terrain Visualization",
+        "Distance Measurement"
+      ],
+      "author": {
+        "@type": "Organization",
+        "name": "Warhammer Simulator"
+      }
+    }
+    </script>
+    <!-- GH Pages subpath basename for the SPA router ('' on localhost/custom-domain) -->
+    <script>
+      (function () {
+        var repo = '/warhammer-simulator';
+        var p = window.location.pathname;
+        window.__APP_BASENAME = (p === repo || p.indexOf(repo + '/') === 0) ? repo : '';
+      })();
+    </script>
+    <script type="module" crossorigin src="assets/main-DG1ErbsX.js"></script>
+    <link rel="stylesheet" crossorigin href="assets/main-Cf85tsAR.css">
+  </head>
+  <body>
+    <!-- SEO: Static, crawler-visible HOMEPAGE content (visually hidden for layout).
+         Present before JS runs so non-rendering crawlers see a real H1 + copy.
+         Belongs to "/" ONLY. The prerender strips it from every prerendered page,
+         and the inline script below removes it on any non-home client render. -->
+    <div id="home-hero" class="sr-only">
+      <h1>Warhammer Simulator - Warhammer 40,000 deployment, line of sight and terrain tool</h1>
+      <p>Updated for 11th edition! Warhammer Simulator is a free browser tool for tabletop Warhammer 40,000. Place unit bases on a 60 x 44 inch battlefield, test deployment zones, and check line of sight (LOS) in seconds. Measure base-to-base and point-to-point distances as you plan your moves. Supports circle, oval and rectangle bases from 25mm to 170 x 109mm.</p>
+    </div>
+    <script>
+      // Gate: the homepage hero H1 must only exist on "/". On any other route
+      // (SPA-served raw shell), remove it so it can't pollute that page's crawl.
+      (function () {
+        var p = window.location.pathname;
+        if (p !== '/' && p !== '/battlefield') {
+          var e = document.getElementById('home-hero');
+          if (e) e.parentNode.removeChild(e);
+        }
+      })();
+    </script>
+    <!-- SEO: Static HTML links for crawlers -->
+    <noscript>
+      <nav style="position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden;">
+        <a href="https://warhammersimulator.com/">Home</a>
+        <a href="https://warhammersimulator.com/changelog">Changelog</a>
+        <a href="https://warhammersimulator.com/40k-layout-reference">Layout Reference</a>
+      </nav>
+    </noscript>
+    <div id="root"></div>
+    <!-- Load data files - deferred so they don't block parsing/first paint -->
+    <script src="terrain-data.js" defer></script>
+    <script src="terrain-data-11e.js" defer></script>
+    <script src="measurements-11e.js" defer></script>
+    <script src="deployment-data.js" defer></script>
+  </body>
+</html>
