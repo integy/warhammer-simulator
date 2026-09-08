@@ -4,7 +4,11 @@
  * 6 scoring rounds per team: R1..R5 + End Mission.
  * Each round = Primary + Secondary; round score = P + S.
  * Team total = sum of all 6 round scores.
- * Local-only, persisted to localStorage (survives refresh).
+ *
+ * Sync: reuses the same room id + Firebase RTDB project as the board sync.
+ * Score is stored at rooms/<room>/score = { s: "<JSON string>", t: <ts> }
+ * (stringified to survive Firebase's array→keyed-object mangling). Any device
+ * in the same room sees live score updates.
  */
 (function () {
   'use strict';
@@ -19,12 +23,32 @@
   ];
   var LS_KEY = 'ws_score_state';
 
+  var FIREBASE_CONFIG = {
+    apiKey: "AIzaSyB3bIlfEwwr4HX3MpkC1wV_nzFYSBsEoik",
+    authDomain: "warhammer-simulator.firebaseapp.com",
+    databaseURL: "https://warhammer-simulator-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "warhammer-simulator",
+    storageBucket: "warhammer-simulator.firebasestorage.app",
+    messagingSenderId: "909466866109",
+    appId: "1:909466866109:web:c9154a570f9fd79f4482d4"
+  };
+
   function el(tag, cls, text) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
     if (text != null) e.textContent = text;
     return e;
   }
+
+  /* ---------- room helpers (mirror chat.js) ---------- */
+  function roomFromUrl() {
+    var m = window.location.search.match(/[?&]room=([A-Za-z0-9_-]+)/);
+    return m ? m[1] : null;
+  }
+  function storageRoom() {
+    try { return localStorage.getItem('ws_sync_room') || null; } catch (e) { return null; }
+  }
+  function currentRoom() { return roomFromUrl() || storageRoom(); }
 
   /* ---------- state ---------- */
   function emptyTeam() {
@@ -54,7 +78,7 @@
   }
 
   var state = load();
-  var panel, toggle;
+  var panel, toggle, roomLabel;
 
   /* refs: inputEls[key][i] = {p, s}; roundEls[key][i]; totalEls[key] */
   var inputEls = {}, roundEls = {}, totalEls = {};
@@ -74,10 +98,99 @@
     totalEls[key].textContent = String(teamTotal(team));
   }
 
+  function applyState(d) {
+    if (!d || !d.red || !d.blue) return;
+    state = d;
+    TEAMS.forEach(function (t) {
+      for (var i = 0; i < ROUNDS.length; i++) {
+        var r = state[t.key][i] || { p: '', s: '' };
+        inputEls[t.key][i].p.value = r.p || '';
+        inputEls[t.key][i].s.value = r.s || '';
+      }
+    });
+    updateTeam('red');
+    updateTeam('blue');
+    save();
+  }
+
+  /* ---------- sync engine ---------- */
+  var scoreRef = null, unsub = null, room = null;
+  var lastWritten = null, pushTimer = null, joining = false;
+
+  function ensureFirebase() {
+    if (!window.firebase || !window.firebase.database) return false;
+    try {
+      if (!window.firebase.apps.length) window.firebase.initializeApp(FIREBASE_CONFIG);
+    } catch (e) {}
+    return true;
+  }
+
+  function serialize() { return JSON.stringify(state); }
+
+  function push() {
+    if (!scoreRef || joining) return;
+    var json = serialize();
+    lastWritten = json;
+    scoreRef.set({ s: json, t: Date.now() }).catch(function () {});
+  }
+  function schedulePush() {
+    if (pushTimer) clearTimeout(pushTimer);
+    pushTimer = setTimeout(push, 300);
+  }
+
+  function unbind() {
+    if (unsub && scoreRef) { try { scoreRef.off('value', unsub); } catch (e) {} }
+    unsub = null;
+    scoreRef = null;
+    lastWritten = null;
+    joining = false;
+    if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; }
+  }
+
+  function bind(r) {
+    unbind();
+    room = r;
+    if (roomLabel) roomLabel.textContent = r ? ('· ' + r) : '';
+    if (!r) return;
+    if (!ensureFirebase()) return;
+
+    var db = window.firebase.database();
+    scoreRef = db.ref('rooms/' + r + '/score');
+
+    // Suppress local pushes until we know whether this is a join or a create.
+    joining = true;
+
+    unsub = scoreRef.on('value', function (snap) {
+      var val = snap.val();
+      if (!val || typeof val.s !== 'string') return;
+      if (lastWritten !== null && val.s === lastWritten) return; // ignore own echo
+      var d;
+      try { d = JSON.parse(val.s); } catch (e) { return; }
+      applyState(d);
+    });
+
+    scoreRef.once('value').then(function (snap) {
+      if (!snap.exists()) {
+        // Fresh room: seed it with our current (local) score.
+        joining = false;
+        push();
+        return;
+      }
+      var val = snap.val();
+      if (val && typeof val.s === 'string') {
+        try { applyState(JSON.parse(val.s)); } catch (e) {}
+      }
+      // Grace period so the remote state wins over any late local edits.
+      setTimeout(function () { joining = false; }, 1500);
+    });
+  }
+
+  /* ---------- input handling ---------- */
   function onInput(key, i, field) {
     state[key][i][field] = inputEls[key][i][field].value;
     updateTeam(key);
     save();
+    schedulePush();
   }
 
   function resetAll() {
@@ -91,6 +204,7 @@
     updateTeam('red');
     updateTeam('blue');
     save();
+    schedulePush();
   }
 
   /* ---------- ui ---------- */
@@ -101,6 +215,7 @@
       "#ws-sc-panel{position:fixed;right:14px;top:76px;z-index:99998;width:400px;background:#1a1a2e;color:#eee;border:1px solid #333;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;box-shadow:0 8px 28px rgba(0,0,0,.5);display:none;overflow:hidden}",
       "#ws-sc-header{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#12121f;border-bottom:1px solid #333}",
       "#ws-sc-title{font-weight:700;color:#ffb74d}",
+      "#ws-sc-room{color:#888;font-size:10px;margin-left:6px}",
       "#ws-sc-header-right{display:flex;gap:8px;align-items:center}",
       "#ws-sc-reset,#ws-sc-close{background:none;border:0;color:#888;cursor:pointer;font-size:15px;padding:0 2px;line-height:1}",
       "#ws-sc-reset:hover{color:#ffb74d}",
@@ -137,6 +252,11 @@
     var title = el('span');
     title.id = 'ws-sc-title';
     title.textContent = '🏆 SCORE';
+    roomLabel = el('span');
+    roomLabel.id = 'ws-sc-room';
+    var left = el('div');
+    left.appendChild(title);
+    left.appendChild(roomLabel);
     var headerRight = el('span');
     headerRight.id = 'ws-sc-header-right';
     var resetBtn = el('button');
@@ -151,7 +271,7 @@
     minBtn.onclick = function () { hide(); };
     headerRight.appendChild(resetBtn);
     headerRight.appendChild(minBtn);
-    header.appendChild(title);
+    header.appendChild(left);
     header.appendChild(headerRight);
     panel.appendChild(header);
 
@@ -166,7 +286,6 @@
       head.style.background = team.color;
       col.appendChild(head);
 
-      // column headers P / S / Σ
       var ch = el('div', 'ws-sc-colhead');
       ch.appendChild(el('span', null, ''));
       ch.appendChild(el('span', null, 'P'));
@@ -211,7 +330,6 @@
         roundEls[team.key].push(rt);
       });
 
-      // total
       var tot = el('div', 'ws-sc-total');
       tot.appendChild(el('span', null, 'TOTAL'));
       var totVal = el('span', 'ws-sc-total-val', '0');
@@ -238,9 +356,20 @@
     toggle.style.display = 'block';
   }
 
+  /* ---------- api + boot ---------- */
+  window.__score = {
+    setRoom: function (r) { bind(r); }
+  };
+
+  function boot() {
+    if (!ensureFirebase()) { setTimeout(boot, 200); return; }
+    buildUI();
+    bind(currentRoom());
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);
   } else {
-    buildUI();
+    boot();
   }
 })();

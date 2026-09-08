@@ -244,6 +244,7 @@
     }
     start(room);
     if (window.__chat) window.__chat.setRoom(room);
+    if (window.__score) window.__score.setRoom(room);
     var link = shareUrl(room);
     ui("🟢 Syncing — room " + room, link, [
       { label: "Copy link", onClick: function () { copy(link); this.textContent = "Copied!"; } },
@@ -259,6 +260,7 @@
     }
     stop();
     if (window.__chat) window.__chat.setRoom(null);
+    if (window.__score) window.__score.setRoom(null);
     ui("⚪ Sync off", null, [{ label: "Start sync", onClick: begin }]);
     if (syncToggleBtn) syncToggleBtn.textContent = "🔗";
   }
